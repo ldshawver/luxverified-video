@@ -1,31 +1,11 @@
-name: Auto Deploy from Codex
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Configure SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p ${{ secrets.DEPLOY_PORT }} -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
-
       - name: Deploy to server
         run: |
-          ssh -p ${{ secrets.DEPLOY_PORT }} \
+          ssh -i ~/.ssh/id_ed25519 \
+              -o IdentitiesOnly=yes \
+              -p ${{ secrets.DEPLOY_PORT }} \
               ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
             set -e
-            cd ${{ secrets.DEPLOY_PATH }}
+            cd "${{ secrets.DEPLOY_PATH }}"
             git fetch origin
             git reset --hard origin/main
             wp cache flush || true
