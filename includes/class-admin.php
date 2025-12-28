@@ -12,6 +12,9 @@ final class Admin {
 		// Enqueue admin assets only on our pages
 		add_action( 'admin_enqueue_scripts', [ __CLASS__, 'enqueue_assets' ] );
 
+		// Temporary admin notice
+		add_action( 'admin_notices', [ __CLASS__, 'render_admin_notice' ] );
+
 		// Render main admin pages
 		add_action( 'admin_menu', [ __CLASS__, 'register_pages' ] );
 	}
@@ -58,6 +61,17 @@ final class Admin {
 			[],
 			LUXVV_VERSION
 		);
+	}
+
+	/* ============================================================
+	 * ADMIN NOTICES
+	 * ============================================================ */
+	public static function render_admin_notice(): void {
+		?>
+		<div class="notice notice-info">
+			<p><?php echo esc_html__( 'Codex PR Test', 'lux-verified-video' ); ?></p>
+		</div>
+		<?php
 	}
 		/* ============================================================
 	 * VERIFICATION FUNNEL STATS
