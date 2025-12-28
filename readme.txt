@@ -2,7 +2,7 @@
 LUX Verified Video
 
 Verified Creator Video Platform for WordPress
-Version: 3.5.x
+Version: 3.5.2
 Author: Lucifer Cruz Studios
 Requires: WordPress 6.8+, PHP 8.1+
 
