@@ -1,0 +1,55 @@
+<?php
+namespace LuxVerified;
+
+if ( ! defined('ABSPATH') ) exit;
+
+class Rest_AI {
+
+	public static function init() {
+		add_action('rest_api_init', [__CLASS__, 'register_routes']);
+	}
+
+	public static function register_routes() {
+		register_rest_route('lux-ai/v1', '/repair', [
+			'methods'  => 'POST',
+			'callback' => [__CLASS__, 'handle_repair'],
+			'permission_callback' => '__return_true',
+		]);
+
+		register_rest_route('lux-ai/v1', '/health', [
+			'methods'  => 'GET',
+			'callback' => [__CLASS__, 'health'],
+			'permission_callback' => '__return_true',
+		]);
+	}
+
+	private static function authorize($request) {
+		$header = $request->get_header('x-lux-ai-secret');
+		$secret = get_option('lux_ai_secret');
+
+		return $header && hash_equals($secret, $header);
+	}
+
+	public static function handle_repair($request) {
+		if ( ! self::authorize($request) ) {
+			return new \WP_REST_Response(['error' => 'unauthorized'], 401);
+		}
+
+		if ( class_exists('LuxVerified\\Repair') ) {
+			Repair::maybe_repair();
+		}
+
+		return [
+			'success' => true,
+			'repaired' => true,
+		];
+	}
+
+	public static function health() {
+		return [
+			'ok' => true,
+			'plugin' => 'lux-verified-video',
+			'time' => current_time('mysql'),
+		];
+	}
+}

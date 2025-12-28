@@ -1,0 +1,68 @@
+<?php
+namespace LuxVerified;
+
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+final class Settings {
+
+    /** @return string */
+    public static function opt_key(): string {
+        return 'luxvv_settings';
+    }
+
+    public static function init(): void {
+        add_action( 'admin_init', [ __CLASS__, 'register' ] );
+    }
+
+    public static function register(): void {
+        if ( false === get_option( self::opt_key(), false ) ) {
+            add_option( self::opt_key(), self::defaults(), '', false );
+        }
+
+        register_setting(
+            'luxvv_settings_group',
+            self::opt_key(),
+            [
+                'type' => 'array',
+                'sanitize_callback' => [ __CLASS__, 'sanitize' ],
+                'default' => self::defaults(),
+            ]
+        );
+    }
+
+    public static function defaults(): array {
+        return [
+            'bunny_library_id' => '',
+            'bunny_api_key'    => '',
+            'bunny_cdn_host'   => '',
+            'min_view_seconds' => 20,
+            'payout_min_cents' => 2500,
+            'payout_tiers'     => json_encode([
+                [ 'min_views' => 0, 'cpm_cents' => 350 ],
+                [ 'min_views' => 10000, 'cpm_cents' => 450 ],
+                [ 'min_views' => 50000, 'cpm_cents' => 600 ],
+            ], JSON_PRETTY_PRINT ),
+            'debug' => 0,
+        ];
+    }
+
+    public static function sanitize( $in ): array {
+        $in = is_array( $in ) ? $in : [];
+        $out = self::defaults();
+
+        foreach ( $out as $k => $v ) {
+            if ( isset( $in[$k] ) ) {
+                $out[$k] = is_numeric($v)
+                    ? (int) $in[$k]
+                    : sanitize_text_field( $in[$k] );
+            }
+        }
+
+        return $out;
+    }
+
+    public static function get( string $key, $default = null ) {
+        $opts = get_option( self::opt_key(), self::defaults() );
+        return $opts[$key] ?? $default;
+    }
+}
