@@ -97,9 +97,12 @@ External automation support
 Replit / AI integrations
 
 - Shortcodes:
-  [luxvv_upload]
-  [luxvv_verified_badge]
-  [luxvv_creator_dashboard]
+[luxvv_upload] 
+[luxvv_upload_form] 
+[luxvv_creator_videos] 
+[luxvv_creator_statistics] 
+[luxvv_creator_payouts] 
+[luxvv_creator_dashboard]
 
 Requirements
 Server
