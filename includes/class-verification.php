@@ -76,19 +76,7 @@ final class Verification {
 		global $wpdb;
 		$table = $wpdb->prefix . 'lux_verified_members';
 
-		$s1 = (int) get_user_meta( $user_id, self::STEP1, true );
-		$s2 = (int) get_user_meta( $user_id, self::STEP2, true );
-		$s3 = (int) get_user_meta( $user_id, self::STEP3, true );
-
-		if ( $s1 && $s2 && $s3 ) {
-			$status = 'ready_for_review';
-		} elseif ( $s1 && $s2 ) {
-			$status = 'step2_completed';
-		} elseif ( $s1 ) {
-			$status = 'step1_completed';
-		} else {
-			$status = 'started';
-		}
+		$status = self::derive_status_from_meta( $user_id );
 
 		$exists = $wpdb->get_var(
 			$wpdb->prepare(
@@ -123,9 +111,7 @@ final class Verification {
 		$user_id = (int) ( $_GET['user_id'] ?? 0 );
 		if ( ! $user_id ) wp_die( 'Invalid user' );
 
-		update_user_meta( $user_id, self::VERIFIED_META, 1 );
-
-		self::send_approval_email( $user_id );
+		self::approve( $user_id );
 
 		wp_safe_redirect( admin_url( 'admin.php?page=luxvv-requests&approved=1' ) );
 		exit;
@@ -139,17 +125,7 @@ final class Verification {
 		$user_id = (int) ( $_GET['user_id'] ?? 0 );
 		if ( ! $user_id ) wp_die( 'Invalid user' );
 
-		delete_user_meta( $user_id, self::VERIFIED_META );
-
-		global $wpdb;
-		$wpdb->update(
-			$wpdb->prefix . 'lux_verified_members',
-			[
-				'verification_status' => 'rejected',
-				'updated_at' => current_time( 'mysql' ),
-			],
-			[ 'user_id' => $user_id ]
-		);
+		self::reject( $user_id, sanitize_textarea_field( $_GET['notes'] ?? '' ) );
 
 		wp_safe_redirect( admin_url( 'admin.php?page=luxvv-requests&rejected=1' ) );
 		exit;
@@ -174,10 +150,57 @@ final class Verification {
 	/* =========================
 	 * EMAIL
 	 * ========================= */
-	private static function send_approval_email( int $user_id ): void {
+	public static function approve( int $user_id ): void {
+		update_user_meta( $user_id, self::VERIFIED_META, 1 );
+
+		global $wpdb;
+		$wpdb->update(
+			$wpdb->prefix . 'lux_verified_members',
+			[
+				'verification_status' => 'approved',
+				'updated_at' => current_time( 'mysql' ),
+			],
+			[ 'user_id' => $user_id ]
+		);
+
+		$email = self::get_approval_email( $user_id );
+		if ( $email ) {
+			wp_mail( $email['to'], $email['subject'], $email['body'] );
+		}
+
+		self::audit( get_current_user_id(), 'approve', [ 'user_id' => $user_id ] );
+	}
+
+	public static function reject( int $user_id, string $notes = '' ): void {
+		delete_user_meta( $user_id, self::VERIFIED_META );
+
+		global $wpdb;
+		$wpdb->update(
+			$wpdb->prefix . 'lux_verified_members',
+			[
+				'verification_status' => 'rejected',
+				'updated_at' => current_time( 'mysql' ),
+			],
+			[ 'user_id' => $user_id ]
+		);
+
+		$email = self::get_rejection_email( $user_id, $notes );
+		if ( $email ) {
+			wp_mail( $email['to'], $email['subject'], $email['body'] );
+		}
+
+		self::audit( get_current_user_id(), 'reject', [
+			'user_id' => $user_id,
+			'notes'   => $notes,
+		] );
+	}
+
+	public static function get_approval_email( int $user_id ): array {
 
 		$user = get_userdata( $user_id );
-		if ( ! $user ) return;
+		if ( ! $user ) {
+			return [];
+		}
 
 		$subject = 'You are officially verified 🎉';
 		$message = "Hi {$user->display_name},\n\n".
@@ -185,7 +208,71 @@ final class Verification {
 		           "Upload here:\nhttps://lucifercruz.com/submit-your-video/\n\n".
 		           "— Lucifer Cruz Studios";
 
-		wp_mail( $user->user_email, $subject, $message );
+		return [
+			'to' => $user->user_email,
+			'subject' => $subject,
+			'body' => $message,
+		];
+	}
+
+	public static function get_rejection_email( int $user_id, string $notes = '' ): array {
+
+		$user = get_userdata( $user_id );
+		if ( ! $user ) {
+			return [];
+		}
+
+		$subject = 'Verification update';
+		$message = "Hi {$user->display_name},\n\n".
+			"Your creator verification request was not approved at this time.\n\n".
+			( $notes ? "Notes from the reviewer:\n{$notes}\n\n" : '' ).
+			"Please update your submission and try again.\n\n".
+			"— Lucifer Cruz Studios";
+
+		return [
+			'to' => $user->user_email,
+			'subject' => $subject,
+			'body' => $message,
+		];
+	}
+
+	public static function audit( int $admin_user_id, string $action, array $meta = [] ): void {
+		global $wpdb;
+
+		$wpdb->insert(
+			$wpdb->prefix . 'luxvv_audit',
+			[
+				'created_at' => current_time( 'mysql' ),
+				'admin_user_id' => $admin_user_id,
+				'target_user_id' => (int) ( $meta['user_id'] ?? 0 ),
+				'action' => sanitize_key( $action ),
+				'meta' => wp_json_encode( $meta ),
+				'ip' => sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' ),
+			],
+			[ '%s', '%d', '%d', '%s', '%s', '%s' ]
+		);
+	}
+
+	public static function derive_status_from_meta( int $user_id ): string {
+		$is_verified = (int) get_user_meta( $user_id, self::VERIFIED_META, true ) === 1;
+		if ( $is_verified ) {
+			return 'approved';
+		}
+
+		$s1 = (int) get_user_meta( $user_id, self::STEP1, true );
+		$s2 = (int) get_user_meta( $user_id, self::STEP2, true );
+		$s3 = (int) get_user_meta( $user_id, self::STEP3, true );
+
+		if ( $s1 && $s2 && $s3 ) {
+			return 'ready_for_review';
+		}
+		if ( $s1 && $s2 ) {
+			return 'step2_completed';
+		}
+		if ( $s1 ) {
+			return 'step1_completed';
+		}
+		return 'started';
 	}
 
 	/* =========================

@@ -1,48 +1,42 @@
 <?php
 namespace LuxVerified;
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-final class Review {
+final class Repair {
 
-	public static function init(): void {
-		add_action( 'admin_post_luxvv_repair', [ __CLASS__, 'handle_repair' ] );
-	}
-
-	public static function handle_repair(): void {
-
-		if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Forbidden' );
-		check_admin_referer( Verification::NONCE_ACTION, '_wpnonce' );
-
+	public static function run_repair(): array {
 		global $wpdb;
 
-		$members = $wpdb->prefix . 'lux_verified_members';
-		$meta    = $wpdb->usermeta;
+		$table = $wpdb->prefix . 'lux_verified_members';
 
-		// ONLY users who have ANY step meta
 		$user_ids = $wpdb->get_col(
-			$wpdb->prepare(
-				"SELECT DISTINCT user_id FROM {$meta}
-				 WHERE meta_key IN (%s, %s, %s)",
-				Verification::STEP1,
-				Verification::STEP2,
-				Verification::STEP3
+			"
+			SELECT DISTINCT user_id
+			FROM {$wpdb->usermeta}
+			WHERE meta_key IN (
+				'luxvv_step1',
+				'luxvv_step2',
+				'luxvv_step3',
+				'luxvv_verified',
+				'luxvv_w9_pdf'
 			)
+			"
 		);
 
 		$updated = 0;
 
 		foreach ( $user_ids as $user_id ) {
-
 			$user_id = (int) $user_id;
-			if ( ! $user_id ) continue;
+			if ( ! $user_id ) {
+				continue;
+			}
 
 			$status = Verification::derive_status_from_meta( $user_id );
-			if ( $status === 'started' ) continue; // 🚫 never insert started
 
 			$exists = (int) $wpdb->get_var(
 				$wpdb->prepare(
-					"SELECT COUNT(*) FROM {$members} WHERE user_id=%d",
+					"SELECT COUNT(*) FROM {$table} WHERE user_id = %d",
 					$user_id
 				)
 			);
@@ -54,22 +48,23 @@ final class Review {
 			];
 
 			if ( $exists ) {
-				$wpdb->update( $members, $data, [ 'user_id' => $user_id ] );
+				$wpdb->update( $table, $data, [ 'user_id' => $user_id ] );
 			} else {
 				$data['created_at'] = current_time( 'mysql' );
-				$wpdb->insert( $members, $data );
+				$wpdb->insert( $table, $data );
 			}
 
 			$updated++;
 		}
 
 		Verification::audit( 0, 'repair', [
-			'users_repaired' => $updated,
+			'users_processed' => $updated,
+			'source' => 'rest',
 		] );
 
-		wp_safe_redirect(
-			admin_url( 'admin.php?page=luxvv-requests&repaired=1&count=' . $updated )
-		);
-		exit;
+		return [
+			'success' => true,
+			'users_processed' => $updated,
+		];
 	}
 }

@@ -17,12 +17,6 @@ final class Helpers {
     public static function referrer(): string {
         return substr( (string) ( $_SERVER['HTTP_REFERER'] ?? '' ), 0, 500 );
     }
-function luxvv_is_verified( int $user_id = 0 ): bool {
-	if ( ! $user_id ) {
-		$user_id = get_current_user_id();
-	}
-	return (int) get_user_meta( $user_id, LUXVV_VERIFIED_META, true ) === 1;
-}
 
     public static function session_id(): string {
         if ( isset( $_COOKIE['luxvv_sid'] ) && is_string( $_COOKIE['luxvv_sid'] ) ) {
@@ -37,4 +31,11 @@ function luxvv_is_verified( int $user_id = 0 ): bool {
         }
         return substr( $sid, 0, 64 );
     }
+}
+
+function luxvv_is_verified( int $user_id = 0 ): bool {
+	if ( ! $user_id ) {
+		$user_id = get_current_user_id();
+	}
+	return (int) get_user_meta( $user_id, LUXVV_VERIFIED_META, true ) === 1;
 }

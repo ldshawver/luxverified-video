@@ -175,4 +175,130 @@ final class Analytics {
         $t_events = $wpdb->prefix . 'lux_video_events';
         $wpdb->query( $wpdb->prepare( "DELETE FROM {$t_events} WHERE created_at < (NOW() - INTERVAL %d DAY)", $days ) );
     }
+
+    public static function rollup_range( int $days ): void {
+        $days = max( 1, $days );
+        for ( $i = $days; $i >= 1; $i-- ) {
+            $day = gmdate( 'Y-m-d', strtotime( "-{$i} days" ) );
+            self::run_daily_rollup( $day );
+        }
+    }
+
+    public static function get_dashboard_summary( int $days = 30 ): array {
+        global $wpdb;
+
+        $days = max( 1, $days );
+        $since = gmdate( 'Y-m-d', strtotime( "-{$days} days" ) );
+
+        $t_rollups = $wpdb->prefix . 'lux_video_rollups';
+
+        $table_exists = $wpdb->get_var(
+            $wpdb->prepare( "SHOW TABLES LIKE %s", $t_rollups )
+        ) === $t_rollups;
+
+        if ( ! $table_exists ) {
+            return [
+                'days' => $days,
+                'impressions' => 0,
+                'plays' => 0,
+                'views_20s' => 0,
+                'completes' => 0,
+                'watch_seconds' => 0,
+            ];
+        }
+
+        $totals = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT
+                    COALESCE(SUM(impressions),0) AS impressions,
+                    COALESCE(SUM(plays),0) AS plays,
+                    COALESCE(SUM(views_20s),0) AS views_20s,
+                    COALESCE(SUM(completes),0) AS completes,
+                    COALESCE(SUM(watch_seconds),0) AS watch_seconds
+                 FROM {$t_rollups}
+                 WHERE day >= %s",
+                $since
+            ),
+            ARRAY_A
+        );
+
+        return [
+            'days' => $days,
+            'impressions' => (int) ( $totals['impressions'] ?? 0 ),
+            'plays' => (int) ( $totals['plays'] ?? 0 ),
+            'views_20s' => (int) ( $totals['views_20s'] ?? 0 ),
+            'completes' => (int) ( $totals['completes'] ?? 0 ),
+            'watch_seconds' => (int) ( $totals['watch_seconds'] ?? 0 ),
+        ];
+    }
+
+    public static function get_creator_summary( int $user_id, int $days = 30 ): array {
+        global $wpdb;
+
+        $days = max( 1, $days );
+        $since = gmdate( 'Y-m-d', strtotime( "-{$days} days" ) );
+
+        $t_rollups = $wpdb->prefix . 'lux_video_rollups';
+
+        $totals = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT
+                    COALESCE(SUM(impressions),0) AS impressions,
+                    COALESCE(SUM(plays),0) AS plays,
+                    COALESCE(SUM(views_20s),0) AS views_20s,
+                    COALESCE(SUM(completes),0) AS completes,
+                    COALESCE(SUM(watch_seconds),0) AS watch_seconds,
+                    COALESCE(SUM(p75),0) AS p75
+                 FROM {$t_rollups}
+                 WHERE day >= %s AND owner_user_id = %d",
+                $since,
+                $user_id
+            ),
+            ARRAY_A
+        );
+
+        $impressions = (int) ( $totals['impressions'] ?? 0 );
+        $plays = (int) ( $totals['plays'] ?? 0 );
+        $views_20s = (int) ( $totals['views_20s'] ?? 0 );
+        $completes = (int) ( $totals['completes'] ?? 0 );
+        $watch_seconds = (int) ( $totals['watch_seconds'] ?? 0 );
+        $p75 = (int) ( $totals['p75'] ?? 0 );
+
+        $ctr = $impressions > 0 ? ( $views_20s / $impressions ) : 0;
+        $completion_rate = $plays > 0 ? ( $completes / $plays ) : 0;
+        $retention_rate = $views_20s > 0 ? ( $p75 / $views_20s ) : 0;
+
+        return [
+            'days' => $days,
+            'impressions' => $impressions,
+            'plays' => $plays,
+            'views_20s' => $views_20s,
+            'completes' => $completes,
+            'watch_seconds' => $watch_seconds,
+            'ctr' => $ctr,
+            'completion_rate' => $completion_rate,
+            'retention_rate' => $retention_rate,
+        ];
+    }
+
+    public static function get_creator_rollups( int $user_id, int $days = 30 ): array {
+        global $wpdb;
+
+        $days = max( 1, $days );
+        $since = gmdate( 'Y-m-d', strtotime( "-{$days} days" ) );
+
+        $t_rollups = $wpdb->prefix . 'lux_video_rollups';
+
+        return $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT day, impressions, plays, views_20s, completes, watch_seconds, p75
+                 FROM {$t_rollups}
+                 WHERE day >= %s AND owner_user_id = %d
+                 ORDER BY day ASC",
+                $since,
+                $user_id
+            ),
+            ARRAY_A
+        );
+    }
 }

@@ -17,29 +17,121 @@ $form_id = isset( $settings['forminator_form_id'] )
 		do_settings_sections( 'luxvv_settings' );
 		?>
 
-<h2>Verification Forms</h2>
+		<h2>Verification Forms</h2>
 
-<table class="form-table">
-<tr>
-  <th>Content Creator Agreement (Step 2)</th>
-  <td>
-    <input type="number"
-      name="luxvv_settings[agreement_form_id]"
-      value="<?php echo esc_attr(\LuxVerified\Settings::get('agreement_form_id')); ?>"
-    />
-  </td>
-</tr>
+		<table class="form-table">
+			<tr>
+				<th>Content Creator Agreement (Step 2)</th>
+				<td>
+					<input type="number"
+						   name="luxvv_settings[agreement_form_id]"
+						   value="<?php echo esc_attr( \LuxVerified\Settings::get( 'agreement_form_id' ) ); ?>"
+					/>
+				</td>
+			</tr>
 
-<tr>
-  <th>W-9 Tax Form (Step 3)</th>
-  <td>
-    <input type="number"
-      name="luxvv_settings[w9_form_id]"
-      value="<?php echo esc_attr(\LuxVerified\Settings::get('w9_form_id')); ?>"
-    />
-  </td>
-</tr>
-</table>
+			<tr>
+				<th>W-9 Tax Form (Step 3)</th>
+				<td>
+					<input type="number"
+						   name="luxvv_settings[w9_form_id]"
+						   value="<?php echo esc_attr( \LuxVerified\Settings::get( 'w9_form_id' ) ); ?>"
+					/>
+				</td>
+			</tr>
+		</table>
+
+		<h2>Bunny Stream</h2>
+		<table class="form-table">
+			<tr>
+				<th>Library ID</th>
+				<td>
+					<input class="regular-text"
+						   name="luxvv_settings[bunny_library_id]"
+						   value="<?php echo esc_attr( \LuxVerified\Settings::get( 'bunny_library_id' ) ); ?>"
+					/>
+				</td>
+			</tr>
+			<tr>
+				<th>API Key (AccessKey)</th>
+				<td>
+					<input class="regular-text"
+						   type="password"
+						   name="luxvv_settings[bunny_api_key]"
+						   value="<?php echo esc_attr( \LuxVerified\Settings::get( 'bunny_api_key' ) ); ?>"
+					/>
+				</td>
+			</tr>
+			<tr>
+				<th>CDN Hostname</th>
+				<td>
+					<input class="regular-text"
+						   name="luxvv_settings[bunny_cdn_host]"
+						   placeholder="vz-xxxxx.b-cdn.net"
+						   value="<?php echo esc_attr( \LuxVerified\Settings::get( 'bunny_cdn_host' ) ); ?>"
+					/>
+				</td>
+			</tr>
+			<tr>
+				<th>Webhook URL</th>
+				<td>
+					<input class="regular-text"
+						   name="luxvv_settings[bunny_webhook_url]"
+						   value="<?php echo esc_attr( \LuxVerified\Settings::get( 'bunny_webhook_url' ) ); ?>"
+					/>
+				</td>
+			</tr>
+		</table>
+
+		<h2>Analytics</h2>
+		<table class="form-table">
+			<tr>
+				<th>Min View Seconds</th>
+				<td>
+					<input type="number"
+						   name="luxvv_settings[analytics_min_view_seconds]"
+						   value="<?php echo esc_attr( \LuxVerified\Settings::get( 'analytics_min_view_seconds' ) ); ?>"
+					/>
+				</td>
+			</tr>
+			<tr>
+				<th>Retention Days</th>
+				<td>
+					<input type="number"
+						   name="luxvv_settings[analytics_retention_days]"
+						   value="<?php echo esc_attr( \LuxVerified\Settings::get( 'analytics_retention_days' ) ); ?>"
+					/>
+				</td>
+			</tr>
+		</table>
+
+		<h2>Payout Tiers (JSON)</h2>
+		<p>Define CPM tiers in cents. Example: <code>[{"min_views":0,"cpm_cents":250}]</code></p>
+		<textarea class="large-text code" rows="6" name="luxvv_settings[payout_tiers_json]"><?php echo esc_textarea( \LuxVerified\Settings::get( 'payout_tiers_json' ) ); ?></textarea>
+
+		<h2>Payout Bonus Thresholds</h2>
+		<table class="form-table">
+			<tr>
+				<th>CTR Bonus Threshold (decimal)</th>
+				<td>
+					<input type="text"
+						   name="luxvv_settings[payout_ctr_bonus_threshold]"
+						   value="<?php echo esc_attr( \LuxVerified\Settings::get( 'payout_ctr_bonus_threshold' ) ); ?>"
+					/>
+					<p class="description">Example: 0.05 = 5% CTR</p>
+				</td>
+			</tr>
+			<tr>
+				<th>Retention Bonus Threshold (decimal)</th>
+				<td>
+					<input type="text"
+						   name="luxvv_settings[payout_retention_bonus_threshold]"
+						   value="<?php echo esc_attr( \LuxVerified\Settings::get( 'payout_retention_bonus_threshold' ) ); ?>"
+					/>
+					<p class="description">Example: 0.75 = 75% retention</p>
+				</td>
+			</tr>
+		</table>
 
 
 		<?php submit_button(); ?>
