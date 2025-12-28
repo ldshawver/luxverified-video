@@ -40,6 +40,13 @@ if ( file_exists( LUXVV_DIR . 'vendor/autoload.php' ) ) {
  * ============================================================ */
 luxvv_require( 'includes/class-install.php' );
 luxvv_require( 'includes/class-settings.php' );
+luxvv_require( 'includes/helpers.php' );
+luxvv_require( 'includes/class-plugin.php' );
+luxvv_require( 'includes/class-analytics.php' );
+luxvv_require( 'includes/class-ajax.php' );
+luxvv_require( 'includes/class-payouts.php' );
+luxvv_require( 'includes/class-ai.php' );
+luxvv_require( 'includes/class-rest-ai.php' );
 luxvv_require( 'includes/class-verification.php' );
 luxvv_require( 'includes/class-admin-menu.php' );
 luxvv_require( 'includes/class-admin.php' );
@@ -47,6 +54,7 @@ luxvv_require( 'includes/class-pdf.php' );
 luxvv_require( 'includes/class-pdf-controller.php' );
 luxvv_require( 'includes/class-review.php' );
 luxvv_require( 'includes/class-admin-actions.php' );
+luxvv_require( 'includes/class-repair.php' );
 
 /* ============================================================
  * ADMIN CSS (Requests page only)
@@ -75,6 +83,15 @@ register_activation_hook( __FILE__, function () {
 	}
 });
 
+register_deactivation_hook( __FILE__, function () {
+	if ( class_exists( 'LuxVerified\\Analytics' ) ) {
+		\LuxVerified\Analytics::unschedule();
+	}
+	if ( class_exists( 'LuxVerified\\Payouts' ) ) {
+		\LuxVerified\Payouts::unschedule();
+	}
+});
+
 /* ============================================================
  * INIT
  * ============================================================ */
@@ -90,6 +107,30 @@ add_action( 'init', function () {
 
 	if ( class_exists( 'LuxVerified\\Review' ) ) {
 		\LuxVerified\Review::init();
+	}
+
+	if ( class_exists( 'LuxVerified\\Ajax' ) ) {
+		\LuxVerified\Ajax::init();
+	}
+
+	if ( class_exists( 'LuxVerified\\Analytics' ) ) {
+		\LuxVerified\Analytics::init();
+	}
+
+	if ( class_exists( 'LuxVerified\\Payouts' ) ) {
+		\LuxVerified\Payouts::init();
+	}
+
+	if ( class_exists( 'LuxVerified\\AI' ) ) {
+		\LuxVerified\AI::init();
+	}
+
+	if ( class_exists( 'LuxVerified\\Rest_AI' ) ) {
+		add_action( 'rest_api_init', [ '\LuxVerified\Rest_AI', 'init' ] );
+	}
+
+	if ( class_exists( 'LUXVV_Plugin' ) ) {
+		LUXVV_Plugin::instance();
 	}
 
 }, 1 );

@@ -60,12 +60,15 @@ final class Settings {
             'payout_minimum_cents' => 2500,
             'payout_tiers_json'    => json_encode(
                 [
-                    [ 'min_views' => 0,     'cpm_cents' => 350 ],
-                    [ 'min_views' => 10000, 'cpm_cents' => 450 ],
-                    [ 'min_views' => 50000, 'cpm_cents' => 600 ],
+                    [ 'min_views' => 0,      'cpm_cents' => 250 ],
+                    [ 'min_views' => 10000,  'cpm_cents' => 400 ],
+                    [ 'min_views' => 50000,  'cpm_cents' => 600 ],
+                    [ 'min_views' => 250000, 'cpm_cents' => 800 ],
                 ],
                 JSON_PRETTY_PRINT
             ),
+            'payout_ctr_bonus_threshold' => 0.05,
+            'payout_retention_bonus_threshold' => 0.75,
 
             'debug' => 0,
         ];
@@ -88,6 +91,9 @@ final class Settings {
 
             if ( is_int( $default ) ) {
                 $out[ $key ] = absint( $in[ $key ] );
+            }
+            elseif ( in_array( $key, [ 'payout_ctr_bonus_threshold', 'payout_retention_bonus_threshold' ], true ) ) {
+                $out[ $key ] = (float) $in[ $key ];
             }
             elseif ( strpos( $key, '_url' ) !== false ) {
                 $out[ $key ] = esc_url_raw( $in[ $key ] );

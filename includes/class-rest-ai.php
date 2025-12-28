@@ -64,14 +64,14 @@ class Rest_AI {
     }
 
     public static function token_auth( $request ) {
-        $token = $request->get_header('X-Lux-Token');
-        $secret = get_option('lux_ai_token', '');
+        $token = $request->get_header( 'X-Lux-Token' );
+        $keys = get_option( AI::OPTION_KEYS, [] );
 
-        if ( empty($secret) ) {
+        if ( empty( $keys['enabled'] ) || empty( $keys['token'] ) ) {
             return true;
         }
 
-        return $token && hash_equals($secret, $token);
+        return $token && hash_equals( (string) $keys['token'], (string) $token );
     }
 
     public static function health_check() {
