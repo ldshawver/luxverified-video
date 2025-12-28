@@ -10,12 +10,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Sanity check
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
         shell: bash
         run: |
-          echo "Runner is:"
-          uname -a
-          echo "Home is:"
-          echo "$HOME"
           mkdir -p "$HOME/.ssh"
-          ls -ld "$HOME/.ssh"
+          printf "%s\n" "${{ secrets.DEPLOY_KEY }}" > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          ssh-keyscan -p ${{ secrets.DEPLOY_PORT }} -H ${{ secrets.DEPLOY_HOST }} >> "$HOME/.ssh/known_hosts"
+
+      - name: Deploy to server
+        shell: bash
+        run: |
+          ssh -i "$HOME/.ssh/id_ed25519" \
+            -o IdentitiesOnly=yes \
+            -p ${{ secrets.DEPLOY_PORT }} \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "set -e && \
+             cd '${{ secrets.DEPLOY_PATH }}' && \
+             git fetch origin && \
+             git reset --hard origin/main && \
+             wp cache flush || true"
+
