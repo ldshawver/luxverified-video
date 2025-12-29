@@ -11,6 +11,39 @@ final class Admin {
 
 		// Enqueue admin assets only on our pages
 		add_action( 'admin_enqueue_scripts', [ __CLASS__, 'enqueue_assets' ] );
+
+		// Temporary admin notice (can be removed after verification)
+		add_action( 'admin_notices', [ __CLASS__, 'render_admin_notice' ] );
+
+		// Render main admin pages
+		add_action( 'admin_menu', [ __CLASS__, 'register_pages' ] );
+	}
+
+	/* ============================================================
+	 * ADMIN MENU PAGES
+	 * ============================================================ */
+	public static function register_pages(): void {
+
+		// MAIN MENU (parent)
+		add_menu_page(
+			'LUX Verified',
+			'LUX Verified',
+			'manage_options',
+			'lux-verified-video',
+			[ __CLASS__, 'render_dashboard' ],
+			'dashicons-shield-alt',
+			56
+		);
+
+		// VERIFICATION REQUESTS
+		add_submenu_page(
+			'lux-verified-video',
+			'Verification Requests',
+			'Requests',
+			'manage_options',
+			'luxvv-verification',
+			[ __CLASS__, 'render_verification_requests' ]
+		);
 	}
 
 	/* ============================================================
@@ -29,6 +62,21 @@ final class Admin {
 			LUXVV_VERSION
 		);
 	}
+
+	/* ============================================================
+	 * ADMIN NOTICES
+	 * ============================================================ */
+	public static function render_admin_notice(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		?>
+		<div class="notice notice-info">
+			<p><?php echo esc_html__( 'LUX Verified Video — Deploy Confirmed', 'lux-verified-video' ); ?></p>
+		</div>
+		<?php
+	}
+
 	/* ============================================================
 	 * VERIFICATION FUNNEL STATS
 	 * ============================================================ */

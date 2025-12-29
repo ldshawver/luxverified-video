@@ -1,0 +1,32 @@
+{
+  "name": "luxverified-video",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "jest --runInBand",
+    "codex:run": "node scripts/run-codex-agent.js",
+    "codex:dry": "DRY_RUN=1 node scripts/run-codex-agent.js"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ldshawver/luxverified-video.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ldshawver/luxverified-video/issues"
+  },
+  "homepage": "https://github.com/ldshawver/luxverified-video#readme",
+  "dependencies": {
+    "openai": "^6.15.0"
+  }
+}
