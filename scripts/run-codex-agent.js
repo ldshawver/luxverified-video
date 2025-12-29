@@ -21,12 +21,6 @@ const hasGhCli = () => {
 const hasRipgrep = () => {
   return hasBinary('rg');
 };
-const todoScanCommand = () => {
-  if (hasRipgrep()) {
-    return 'rg "TODO" -n . -g "!node_modules/**" -g "!vendor/**" | head -n 20';
-  }
-  return 'grep -R --exclude-dir=node_modules --exclude-dir=vendor "TODO" -n . | head -n 20';
-};
 function requireEnv(name) {
   const v = process.env[name];
   if (!v) {
@@ -46,7 +40,10 @@ console.log('Starting Codex agent (demo)...', DRY_RUN ? '(dry run)' : '');
   try {
     const todos = process.env.FAKE_TODOS
       ? process.env.FAKE_TODOS
-      : execSync(todoScanCommand(), { encoding: 'utf8', maxBuffer: 1024 * 1024 * 5 });
+      : execSync(
+          hasRipgrep() ? 'rg "TODO" -n . | head -n 20' : 'grep -R "TODO" -n . | head -n 20',
+          { encoding: 'utf8' }
+        );
     console.log('Found TODOs:\n', todos);
 
     let aiSummary = '';
