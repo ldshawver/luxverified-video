@@ -7,13 +7,19 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 
 const DRY_RUN = !!process.env.DRY_RUN;
-const hasGhCli = () => {
+const hasBinary = (binary) => {
   try {
-    execSync('command -v gh', { stdio: 'ignore' });
+    execSync(`command -v ${binary}`, { stdio: 'ignore' });
     return true;
   } catch (err) {
     return false;
   }
+};
+const hasGhCli = () => {
+  return hasBinary('gh');
+};
+const hasRipgrep = () => {
+  return hasBinary('rg');
 };
 function requireEnv(name) {
   const v = process.env[name];
@@ -34,7 +40,10 @@ console.log('Starting Codex agent (demo)...', DRY_RUN ? '(dry run)' : '');
   try {
     const todos = process.env.FAKE_TODOS
       ? process.env.FAKE_TODOS
-      : execSync('rg "TODO" -n . | head -n 20', { encoding: 'utf8' });
+      : execSync(
+          hasRipgrep() ? 'rg "TODO" -n . | head -n 20' : 'grep -R "TODO" -n . | head -n 20',
+          { encoding: 'utf8' }
+        );
     console.log('Found TODOs:\n', todos);
 
     let aiSummary = '';
@@ -79,7 +88,9 @@ console.log('Starting Codex agent (demo)...', DRY_RUN ? '(dry run)' : '');
         process.exit(1);
       }
       console.log('Creating GitHub issue (uses gh CLI with token from CODEX_GH_PAT)...');
-      execSync('gh auth login --with-token', { input: `${CODEX_GH_PAT}\n`, stdio: ['pipe', 'inherit', 'inherit'] });
+      const ghEnv = { ...process.env };
+      delete ghEnv.GITHUB_TOKEN;
+      execSync('gh auth login --with-token', { input: `${CODEX_GH_PAT}\n`, stdio: ['pipe', 'inherit', 'inherit'], env: ghEnv });
       execSync(
         `gh issue create --repo ldshawver/luxverified-video --title "${title}" --body-file ${tmp}`,
         { stdio: 'inherit' }
