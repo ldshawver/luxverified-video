@@ -7,6 +7,14 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 
 const DRY_RUN = !!process.env.DRY_RUN;
+const hasGhCli = () => {
+  try {
+    execSync('command -v gh', { stdio: 'ignore' });
+    return true;
+  } catch (err) {
+    return false;
+  }
+};
 function requireEnv(name) {
   const v = process.env[name];
   if (!v) {
@@ -66,6 +74,10 @@ console.log('Starting Codex agent (demo)...', DRY_RUN ? '(dry run)' : '');
       console.log('DRY_RUN enabled — not creating GitHub issue. Issue body:\n');
       console.log(body);
     } else {
+      if (!hasGhCli()) {
+        console.error('gh CLI not found in PATH. Install GitHub CLI to create issues.');
+        process.exit(1);
+      }
       console.log('Creating GitHub issue (uses gh CLI with token from CODEX_GH_PAT)...');
       execSync('gh auth login --with-token', { input: `${CODEX_GH_PAT}\n`, stdio: ['pipe', 'inherit', 'inherit'] });
       execSync(
