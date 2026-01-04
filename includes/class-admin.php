@@ -14,36 +14,6 @@ final class Admin {
 
 		// Temporary admin notice (can be removed after verification)
 		add_action( 'admin_notices', [ __CLASS__, 'render_admin_notice' ] );
-
-		// Render main admin pages
-		add_action( 'admin_menu', [ __CLASS__, 'register_pages' ] );
-	}
-
-	/* ============================================================
-	 * ADMIN MENU PAGES
-	 * ============================================================ */
-	public static function register_pages(): void {
-
-		// MAIN MENU (parent)
-		add_menu_page(
-			'LUX Verified',
-			'LUX Verified',
-			'manage_options',
-			'lux-verified-video',
-			[ __CLASS__, 'render_dashboard' ],
-			'dashicons-shield-alt',
-			56
-		);
-
-		// VERIFICATION REQUESTS
-		add_submenu_page(
-			'lux-verified-video',
-			'Verification Requests',
-			'Requests',
-			'manage_options',
-			'luxvv-verification',
-			[ __CLASS__, 'render_verification_requests' ]
-		);
 	}
 
 	/* ============================================================

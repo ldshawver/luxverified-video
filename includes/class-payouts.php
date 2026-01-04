@@ -157,14 +157,14 @@ final class Payouts {
         $json = (string) Settings::get( 'payout_tiers_json', '' );
         $tiers = json_decode( $json, true );
         if ( ! is_array( $tiers ) ) {
-            return 250;
+            return 350;
         }
         // Sort by min_views ascending
         usort( $tiers, function( $a, $b ) {
             return (int) ($a['min_views'] ?? 0) <=> (int) ($b['min_views'] ?? 0);
         });
 
-        $cpm = 250;
+        $cpm = 350;
         foreach ( $tiers as $t ) {
             $min_views = (int) ( $t['min_views'] ?? 0 );
             $tier_cpm  = (int) ( $t['cpm_cents'] ?? 0 );
@@ -254,9 +254,6 @@ final class Payouts {
     }
 
     public static function resolve_tier_name( int $views ): string {
-        if ( $views >= 250000 ) {
-            return 'Platinum';
-        }
         if ( $views >= 50000 ) {
             return 'Gold';
         }

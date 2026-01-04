@@ -2,7 +2,7 @@
 /**
  * Plugin Name: LUX Verified Video
  * Description: Verified creator video platform with gated uploads, W-9 compliance, analytics, and AI control.
- * Version: 3.5.4
+ * Version: 3.5.6
  * Author: Lucifer Cruz Studios
  * Requires PHP: 8.1
  */
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 /* ============================================================
  * CONSTANTS
  * ============================================================ */
-define( 'LUXVV_VERSION', '3.5.4' );
+define( 'LUXVV_VERSION', '3.5.6' );
 define( 'LUXVV_FILE', __FILE__ );
 define( 'LUXVV_DIR', plugin_dir_path( __FILE__ ) );
 define( 'LUXVV_URL', plugin_dir_url( __FILE__ ) );
@@ -42,7 +42,7 @@ if ( file_exists( LUXVV_DIR . 'vendor/autoload.php' ) ) {
  * ============================================================ */
 luxvv_require( 'includes/class-install.php' );
 luxvv_require( 'includes/class-settings.php' );
-luxvv_require( 'includes/helpers.php' );
+luxvv_require( 'includes/class-helpers.php' );
 luxvv_require( 'includes/class-plugin.php' );
 luxvv_require( 'includes/class-analytics.php' );
 luxvv_require( 'includes/class-ajax.php' );
@@ -69,7 +69,7 @@ add_action( 'admin_enqueue_scripts', function( $hook ) {
 
 	wp_enqueue_script(
 		'luxvv-admin-dashboard',
-		LUXVV_URL . 'assets/js/admin-dashboard.js',
+		LUXVV_URL . 'assets/admin-dashboard.js',
 		[],
 		LUXVV_VERSION,
 		true
