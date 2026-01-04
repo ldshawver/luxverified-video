@@ -56,6 +56,11 @@ if ( empty( $requests ) ) {
 					'_wpnonce'
 				);
 
+				$w9_generate_url = wp_nonce_url(
+					admin_url( 'admin-post.php?action=luxvv_generate_w9&user_id=' . $user_id ),
+					'luxvv_generate_w9'
+				);
+
 				$w9_file = get_user_meta( $user_id, 'luxvv_w9_pdf', true );
 				$w9_url  = $w9_file
 					? wp_nonce_url(
@@ -102,6 +107,13 @@ if ( empty( $requests ) ) {
 						   data-reject-url="<?php echo esc_attr( $reject_url ); ?>">
 							Reject
 						</a>
+
+						<?php if ( $can_approve ) : ?>
+							<a class="button"
+							   href="<?php echo esc_url( $w9_generate_url ); ?>">
+								Generate W-9
+							</a>
+						<?php endif; ?>
 
 						<?php if ( $w9_url ) : ?>
 							<a class="button luxvv-icon-btn"

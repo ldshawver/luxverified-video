@@ -21,10 +21,12 @@ define( 'LUXVV_VERIFIED_META', 'luxvv_verified' );
 /* ============================================================
  * SAFE REQUIRE
  * ============================================================ */
-function luxvv_require( string $file ): void {
-	$path = LUXVV_DIR . ltrim( $file, '/\\' );
-	if ( file_exists( $path ) ) {
-		require_once $path;
+if ( ! function_exists( 'luxvv_require' ) ) {
+	function luxvv_require( string $file ): void {
+		$path = LUXVV_DIR . ltrim( $file, '/\\' );
+		if ( file_exists( $path ) ) {
+			require_once $path;
+		}
 	}
 }
 

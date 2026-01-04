@@ -42,6 +42,7 @@ final class PDF_Controller {
 		$template = LUXVV_DIR . 'assets/w9-template.pdf';
 
 		$file = PDF::generate_w9_pdf( $data, $template );
+		update_user_meta( $user_id, 'luxvv_w9_pdf', $file );
 
 		nocache_headers();
 		header( 'Content-Type: application/pdf' );
