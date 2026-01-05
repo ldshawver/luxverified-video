@@ -116,3 +116,44 @@
   width: 100%;
   max-width: 520px;
 }
+
+@media (max-width: 720px) {
+  .luxvv-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .luxvv-card {
+    aspect-ratio: 1 / 1;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+
+  .luxvv-card-label {
+    font-size: 11px;
+  }
+
+  .luxvv-card-value {
+    font-size: 22px;
+  }
+
+  .luxvv-chart-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 420px) {
+  .luxvv-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .luxvv-card {
+    aspect-ratio: auto;
+    min-height: 160px;
+  }
+}

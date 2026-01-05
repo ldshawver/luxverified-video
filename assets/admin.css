@@ -197,6 +197,70 @@ table.luxvv-table td {
   border-radius: 999px;
 }
 
+/* =========================================================
+   LUX Marketing
+   ======================================================= */
+
+.luxvv-marketing .description {
+  color: #475569;
+}
+
+.luxvv-marketing .luxvv-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  margin: 16px 0;
+}
+
+.luxvv-marketing .luxvv-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.luxvv-marketing .luxvv-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #f8fafc;
+}
+
+.luxvv-marketing .luxvv-tool-title {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.luxvv-marketing .luxvv-tool-note {
+  font-size: 12px;
+  color: #475569;
+}
+
+.luxvv-marketing .luxvv-tool-link {
+  font-size: 12px;
+  text-decoration: none;
+  color: #2563eb;
+}
+
+.luxvv-marketing .luxvv-prompt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.luxvv-marketing .luxvv-prompt textarea {
+  background: #f8fafc;
+}
+
+.luxvv-marketing .luxvv-workflow {
+  margin-left: 18px;
+}
+
 /* Sticky actions column */
 table.luxvv-table th.luxvv-actions-col,
 table.luxvv-table td.luxvv-actions-col {
