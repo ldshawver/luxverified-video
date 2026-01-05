@@ -103,6 +103,10 @@ add_action( 'init', function () {
 		\LuxVerified\Settings::init();
 	}
 
+	if ( class_exists( 'LuxVerified\\Install' ) ) {
+		\LuxVerified\Install::maybe_upgrade();
+	}
+
 	if ( class_exists( 'LuxVerified\\Verification' ) ) {
 		\LuxVerified\Verification::init();
 	}

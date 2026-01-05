@@ -379,10 +379,20 @@ final class LUXVV_Plugin {
                         <th>Bonus</th>
                         <th>Payout</th>
                         <th>Status</th>
+                        <th>Receipt</th>
                     </tr>
                     </thead>
                     <tbody>
                     <?php foreach ( $rows as $row ) : ?>
+                        <?php
+                        $payout_id = (int) ( $row['id'] ?? 0 );
+                        $receipt_url = ( ( $row['status'] ?? '' ) === 'paid' && $payout_id )
+                            ? wp_nonce_url(
+                                admin_url( 'admin-post.php?action=luxvv_download_receipt&payout_id=' . $payout_id ),
+                                'luxvv_download_receipt_' . $payout_id
+                            )
+                            : '';
+                        ?>
                         <tr>
                             <td><?php echo esc_html( $row['period_start'] ); ?> → <?php echo esc_html( $row['period_end'] ); ?></td>
                             <td><?php echo number_format_i18n( (int) $row['views_20s'] ); ?></td>
@@ -390,6 +400,13 @@ final class LUXVV_Plugin {
                             <td><?php echo esc_html( number_format_i18n( (float) $row['bonus_pct'] * 100, 1 ) ); ?>%</td>
                             <td><?php echo number_format_i18n( (int) $row['payout_cents'] ); ?>¢</td>
                             <td><?php echo esc_html( $row['status'] ); ?></td>
+                            <td>
+                                <?php if ( $receipt_url ) : ?>
+                                    <a href="<?php echo esc_url( $receipt_url ); ?>">Download</a>
+                                <?php else : ?>
+                                    —
+                                <?php endif; ?>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>

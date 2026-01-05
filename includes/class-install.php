@@ -15,6 +15,8 @@ final class Install {
 		self::create_payout_resets_table();
 		self::create_audit_table();
 
+		self::maybe_upgrade();
+
 		if ( class_exists( '\\LuxVerified\\Settings' ) ) {
 			Settings::maybe_seed_defaults();
 		}
@@ -31,6 +33,23 @@ final class Install {
 		if ( get_option( 'luxvv_auto_approve_after_w9', null ) === null ) {
 			add_option( 'luxvv_auto_approve_after_w9', 0 );
 		}
+	}
+
+	public static function maybe_upgrade(): void {
+		$version = (string) get_option( 'luxvv_db_version', '' );
+		if ( $version === LUXVV_VERSION ) {
+			return;
+		}
+
+		self::create_videos_table();
+		self::create_events_table();
+		self::create_rollups_table();
+		self::create_members_table();
+		self::create_payouts_table();
+		self::create_payout_resets_table();
+		self::create_audit_table();
+
+		update_option( 'luxvv_db_version', LUXVV_VERSION, false );
 	}
 
 	private static function create_videos_table(): void {
@@ -192,6 +211,11 @@ final class Install {
 			retention_rate FLOAT NOT NULL DEFAULT 0,
 			bonus_pct FLOAT NOT NULL DEFAULT 0,
 			status VARCHAR(20) NOT NULL DEFAULT 'pending',
+			paid_at DATETIME NULL,
+			paid_by BIGINT(20) UNSIGNED NULL,
+			paid_reference VARCHAR(100) NULL,
+			paid_notes TEXT NULL,
+			receipt_path VARCHAR(255) NULL,
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL,
 			PRIMARY KEY  (id),
