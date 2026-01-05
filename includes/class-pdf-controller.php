@@ -41,7 +41,23 @@ final class PDF_Controller {
 
 		$template = LUXVV_DIR . 'assets/w9-template.pdf';
 
+		if ( ! file_exists( $template ) ) {
+			wp_die( 'W-9 template missing. Please upload assets/w9-template.pdf.' );
+		}
+
+		$city_state_zip = trim( implode( ' ', array_filter( [
+			$data['city'],
+			$data['state'],
+			$data['zip'],
+		] ) ) );
+
+		$data['city_state_zip'] = $city_state_zip;
+		$data['ssn_last4'] = $data['ssn'] ?? '';
+
 		$file = PDF::generate_w9_pdf( $data, $template );
+		if ( ! $file ) {
+			wp_die( 'Unable to generate W-9 PDF.' );
+		}
 		update_user_meta( $user_id, 'luxvv_w9_pdf', $file );
 
 		nocache_headers();

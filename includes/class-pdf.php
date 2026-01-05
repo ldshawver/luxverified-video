@@ -10,7 +10,7 @@ final class PDF {
 	public static function generate_w9_pdf( array $data, string $template ): string {
 
 		if ( ! file_exists( $template ) ) {
-			throw new \RuntimeException( 'W-9 template missing.' );
+			return '';
 		}
 
 		$upload = wp_upload_dir();
@@ -39,6 +39,51 @@ final class PDF {
 		}
 
 		$pdf->Output( $path, 'F' );
+		return $path;
+	}
+
+	public static function generate_payout_receipt( array $data ): string {
+		$upload = wp_upload_dir();
+		$dir = trailingslashit( $upload['basedir'] ) . 'luxvv/receipts/';
+		if ( ! file_exists( $dir ) ) {
+			wp_mkdir_p( $dir );
+		}
+
+		$file = 'payout-' . (int) $data['payout_id'] . '-' . time() . '.pdf';
+		$path = $dir . $file;
+
+		$pdf = new Fpdi();
+		$pdf->setPrintHeader( false );
+		$pdf->setPrintFooter( false );
+		$pdf->AddPage();
+		$pdf->SetFont( 'helvetica', '', 12 );
+
+		$pdf->Write( 0, 'LUX Verified Video - Payout Receipt' );
+		$pdf->Ln( 8 );
+
+		$lines = [
+			'Receipt ID: ' . (int) $data['payout_id'],
+			'Creator: ' . (string) $data['creator_name'],
+			'Email: ' . (string) $data['creator_email'],
+			'Period: ' . (string) $data['period_start'] . ' → ' . (string) $data['period_end'],
+			'Views ≥ 20s: ' . (int) $data['views_20s'],
+			'CPM (cents): ' . (int) $data['cpm_cents'],
+			'Base payout (cents): ' . (int) $data['base_payout_cents'],
+			'Bonus %: ' . (float) $data['bonus_pct'],
+			'Total payout (cents): ' . (int) $data['payout_cents'],
+			'Paid at: ' . (string) $data['paid_at'],
+			'Paid by (admin ID): ' . (int) $data['paid_by'],
+			'Reference: ' . (string) $data['paid_reference'],
+			'Notes: ' . (string) $data['paid_notes'],
+		];
+
+		foreach ( $lines as $line ) {
+			$pdf->Write( 0, $line );
+			$pdf->Ln( 6 );
+		}
+
+		$pdf->Output( $path, 'F' );
+
 		return $path;
 	}
 

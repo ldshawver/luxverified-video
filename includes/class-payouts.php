@@ -8,6 +8,9 @@ final class Payouts {
         add_action( 'luxvv_weekly_payouts', [ __CLASS__, 'run_weekly_payouts' ] );
         add_action( 'luxvv_yearly_1099', [ __CLASS__, 'send_yearly_1099s' ] );
         add_filter( 'cron_schedules', [ __CLASS__, 'add_cron_schedules' ] );
+        add_action( 'admin_post_luxvv_mark_payout_paid', [ __CLASS__, 'handle_mark_paid' ] );
+        add_action( 'admin_post_luxvv_reset_payout', [ __CLASS__, 'handle_reset_payout' ] );
+        add_action( 'admin_post_luxvv_download_receipt', [ __CLASS__, 'handle_download_receipt' ] );
     }
 
     public static function schedule(): void {
@@ -134,6 +137,7 @@ final class Payouts {
                         ctr=VALUES(ctr),
                         retention_rate=VALUES(retention_rate),
                         bonus_pct=VALUES(bonus_pct),
+                        status=IF(status='paid','paid','pending'),
                         updated_at=VALUES(updated_at)",
                     $period_start,
                     $period_end,
@@ -157,14 +161,14 @@ final class Payouts {
         $json = (string) Settings::get( 'payout_tiers_json', '' );
         $tiers = json_decode( $json, true );
         if ( ! is_array( $tiers ) ) {
-            return 250;
+            return 350;
         }
         // Sort by min_views ascending
         usort( $tiers, function( $a, $b ) {
             return (int) ($a['min_views'] ?? 0) <=> (int) ($b['min_views'] ?? 0);
         });
 
-        $cpm = 250;
+        $cpm = 350;
         foreach ( $tiers as $t ) {
             $min_views = (int) ( $t['min_views'] ?? 0 );
             $tier_cpm  = (int) ( $t['cpm_cents'] ?? 0 );
@@ -254,9 +258,6 @@ final class Payouts {
     }
 
     public static function resolve_tier_name( int $views ): string {
-        if ( $views >= 250000 ) {
-            return 'Platinum';
-        }
         if ( $views >= 50000 ) {
             return 'Gold';
         }
@@ -264,6 +265,221 @@ final class Payouts {
             return 'Silver';
         }
         return 'Bronze';
+    }
+
+    public static function handle_mark_paid(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( 'Forbidden' );
+        }
+
+        check_admin_referer( 'luxvv_mark_payout_paid' );
+
+        $payout_id = absint( $_POST['payout_id'] ?? 0 );
+        $reference = sanitize_text_field( wp_unslash( $_POST['reference'] ?? '' ) );
+        $notes = sanitize_textarea_field( wp_unslash( $_POST['notes'] ?? '' ) );
+
+        if ( ! $payout_id ) {
+            wp_die( 'Invalid payout.' );
+        }
+
+        self::mark_payout_paid( $payout_id, $reference, $notes );
+
+        wp_safe_redirect( admin_url( 'admin.php?page=luxvv-payouts&paid=1' ) );
+        exit;
+    }
+
+    public static function handle_reset_payout(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( 'Forbidden' );
+        }
+
+        check_admin_referer( 'luxvv_reset_payout' );
+
+        $payout_id = absint( $_POST['payout_id'] ?? 0 );
+        $reason = sanitize_textarea_field( wp_unslash( $_POST['reason'] ?? '' ) );
+
+        if ( ! $payout_id ) {
+            wp_die( 'Invalid payout.' );
+        }
+
+        self::reset_payout( $payout_id, $reason );
+
+        wp_safe_redirect( admin_url( 'admin.php?page=luxvv-payouts&reset=1' ) );
+        exit;
+    }
+
+    public static function handle_download_receipt(): void {
+        if ( ! is_user_logged_in() ) {
+            wp_safe_redirect( wp_login_url() );
+            exit;
+        }
+
+        $payout_id = absint( $_GET['payout_id'] ?? 0 );
+        $nonce = sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ?? '' ) );
+
+        if ( ! wp_verify_nonce( $nonce, 'luxvv_download_receipt_' . $payout_id ) ) {
+            wp_die( 'Invalid receipt request.' );
+        }
+
+        $row = self::get_payout( $payout_id );
+        if ( ! $row ) {
+            wp_die( 'Receipt not found.' );
+        }
+
+        if ( ( $row['status'] ?? '' ) !== 'paid' ) {
+            wp_die( 'Receipt unavailable.' );
+        }
+
+        $user_id = (int) $row['user_id'];
+        if ( ! current_user_can( 'manage_options' ) && get_current_user_id() !== $user_id ) {
+            wp_die( 'Unauthorized' );
+        }
+
+        $path = $row['receipt_path'] ?? '';
+        if ( ! $path || ! file_exists( $path ) ) {
+            $path = self::generate_receipt( $row );
+        }
+
+        if ( ! $path || ! file_exists( $path ) ) {
+            wp_die( 'Receipt missing.' );
+        }
+
+        nocache_headers();
+        header( 'Content-Type: application/pdf' );
+        header( 'Content-Disposition: attachment; filename="luxvv-receipt-' . $payout_id . '.pdf"' );
+        readfile( $path );
+        exit;
+    }
+
+    public static function mark_payout_paid( int $payout_id, string $reference = '', string $notes = '' ): void {
+        global $wpdb;
+        $t_payouts = $wpdb->prefix . 'lux_payouts';
+
+        $row = self::get_payout( $payout_id );
+        if ( ! $row ) {
+            return;
+        }
+
+        $paid_at = current_time( 'mysql' );
+        $paid_by = get_current_user_id();
+        $path = self::generate_receipt( $row, $paid_at, $paid_by, $reference, $notes );
+
+        $wpdb->update(
+            $t_payouts,
+            [
+                'status' => 'paid',
+                'paid_at' => $paid_at,
+                'paid_by' => $paid_by,
+                'paid_reference' => $reference,
+                'paid_notes' => $notes,
+                'receipt_path' => $path,
+                'updated_at' => current_time( 'mysql' ),
+            ],
+            [ 'id' => $payout_id ],
+            [ '%s', '%s', '%d', '%s', '%s', '%s', '%s' ],
+            [ '%d' ]
+        );
+    }
+
+    public static function reset_payout( int $payout_id, string $reason = '' ): void {
+        global $wpdb;
+        $t_payouts = $wpdb->prefix . 'lux_payouts';
+        $t_resets = $wpdb->prefix . 'lux_payout_resets';
+
+        $wpdb->query(
+            $wpdb->prepare(
+                "UPDATE {$t_payouts}
+                 SET status='pending',
+                     paid_at=NULL,
+                     paid_by=NULL,
+                     paid_reference=NULL,
+                     paid_notes=NULL,
+                     receipt_path=NULL,
+                     updated_at=%s
+                 WHERE id=%d",
+                current_time( 'mysql' ),
+                $payout_id
+            )
+        );
+
+        $wpdb->insert(
+            $t_resets,
+            [
+                'payout_id' => $payout_id,
+                'admin_user_id' => get_current_user_id(),
+                'reason' => $reason,
+                'created_at' => current_time( 'mysql' ),
+            ],
+            [ '%d', '%d', '%s', '%s' ]
+        );
+    }
+
+    private static function get_payout( int $payout_id ): ?array {
+        global $wpdb;
+        $t_payouts = $wpdb->prefix . 'lux_payouts';
+        $row = $wpdb->get_row(
+            $wpdb->prepare( "SELECT * FROM {$t_payouts} WHERE id = %d", $payout_id ),
+            ARRAY_A
+        );
+        return $row ?: null;
+    }
+
+    private static function generate_receipt(
+        array $row,
+        ?string $paid_at = null,
+        ?int $paid_by = null,
+        string $reference = '',
+        string $notes = ''
+    ): string {
+        $user = get_userdata( (int) $row['user_id'] );
+        $paid_at = $paid_at ?: (string) ( $row['paid_at'] ?? current_time( 'mysql' ) );
+        $paid_by = $paid_by ?: (int) ( $row['paid_by'] ?? 0 );
+        $reference = $reference ?: (string) ( $row['paid_reference'] ?? '' );
+        $notes = $notes ?: (string) ( $row['paid_notes'] ?? '' );
+
+        $p75 = 0;
+        if ( isset( $row['retention_rate'] ) ) {
+            $p75 = (int) floor( (float) $row['retention_rate'] * (int) $row['views_20s'] );
+        }
+
+        $calc = self::calculate_payout_breakdown(
+            (int) $row['views_20s'],
+            (int) $row['impressions'],
+            (int) $row['plays'],
+            $p75
+        );
+
+        $data = [
+            'payout_id' => (int) $row['id'],
+            'creator_name' => $user ? $user->display_name : 'Unknown',
+            'creator_email' => $user ? $user->user_email : '',
+            'period_start' => $row['period_start'] ?? '',
+            'period_end' => $row['period_end'] ?? '',
+            'views_20s' => (int) $row['views_20s'],
+            'cpm_cents' => (int) $row['cpm_cents'],
+            'base_payout_cents' => (int) $calc['base_payout_cents'],
+            'bonus_pct' => (float) ( $row['bonus_pct'] ?? 0 ),
+            'payout_cents' => (int) $row['payout_cents'],
+            'paid_at' => $paid_at,
+            'paid_by' => $paid_by,
+            'paid_reference' => $reference,
+            'paid_notes' => $notes,
+        ];
+
+        $path = PDF::generate_payout_receipt( $data );
+
+        global $wpdb;
+        $wpdb->update(
+            $wpdb->prefix . 'lux_payouts',
+            [
+                'receipt_path' => $path,
+            ],
+            [ 'id' => (int) $row['id'] ],
+            [ '%s' ],
+            [ '%d' ]
+        );
+
+        return $path;
     }
 
     public static function add_cron_schedules( array $schedules ): array {
