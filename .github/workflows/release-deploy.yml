@@ -1,0 +1,65 @@
+name: Deploy tagged release to VPS
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo (for metadata only)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          echo "tag_version=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.LUX_VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.LUX_VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Check VPS version
+        id: check
+        run: |
+          VPS_VERSION=$(ssh -i ~/.ssh/id_ed25519 \
+            ${{ secrets.LUX_VPS_USER }}@${{ secrets.LUX_VPS_HOST }} \
+            "cat ${{ secrets.LUX_VPS_PATH }}/VERSION || echo 0.0.0")
+
+          TAG_VERSION="${{ steps.version.outputs.tag_version }}"
+
+          echo "VPS version: $VPS_VERSION"
+          echo "Tag version: $TAG_VERSION"
+
+          if [ "$(printf '%s\n' "$VPS_VERSION" "$TAG_VERSION" | sort -V | head -n1)" != "$TAG_VERSION" ]; then
+            echo "deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "deploy=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy to VPS
+        if: steps.check.outputs.deploy == 'true'
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            ${{ secrets.LUX_VPS_USER }}@${{ secrets.LUX_VPS_HOST }} << 'EOF'
+              set -e
+              cd ${{ secrets.LUX_VPS_PATH }}
+              git fetch --tags
+              git checkout v${{ steps.version.outputs.tag_version }}
+              echo "${{ steps.version.outputs.tag_version }}" > VERSION
+              systemctl restart lux
+          EOF
+
+      - name: Skip deploy (version not newer)
+        if: steps.check.outputs.deploy == 'false'
+        run: |
+          echo "No deployment needed. VPS already has this version or newer."
