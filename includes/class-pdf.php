@@ -10,7 +10,7 @@ final class PDF {
 	public static function generate_w9_pdf( array $data, string $template ): string {
 
 		if ( ! file_exists( $template ) ) {
-			throw new \RuntimeException( 'W-9 template missing.' );
+			return '';
 		}
 
 		$upload = wp_upload_dir();
