@@ -57,6 +57,12 @@ class Rest_AI {
             'callback' => [__CLASS__, 'payouts_receipt'],
             'permission_callback' => [__CLASS__, 'basic_auth_only'],
         ]);
+
+        register_rest_route('luxvv/v1', '/marketing/export', [
+            'methods'  => 'GET',
+            'callback' => [__CLASS__, 'marketing_export'],
+            'permission_callback' => [__CLASS__, 'token_auth'],
+        ]);
     }
 
     public static function basic_auth_only() {
@@ -164,6 +170,16 @@ class Rest_AI {
             return \LuxVerified\Analytics::get_dashboard_summary( $days );
         }
         return [ 'error' => 'analytics_unavailable' ];
+    }
+
+    public static function marketing_export( $request ) {
+        if ( ! class_exists( '\\LuxVerified\\Marketing' ) ) {
+            return [
+                'error' => 'marketing_unavailable',
+            ];
+        }
+
+        return Marketing::export_config();
     }
 
     public static function payouts_list( $request ) {

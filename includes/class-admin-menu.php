@@ -81,6 +81,15 @@ final class Admin_Menu {
 			'luxvv-ai',
 			[ __CLASS__, 'render_ai' ]
 		);
+
+		add_submenu_page(
+			self::SLUG,
+			'LUX Marketing',
+			'LUX Marketing',
+			'manage_options',
+			'luxvv-marketing',
+			[ __CLASS__, 'render_marketing' ]
+		);
 	}
 
 	public static function render_dashboard(): void {
@@ -228,6 +237,36 @@ final class Admin_Menu {
 			<?php endif; ?>
 		</div>
 		<?php
+	}
+
+	public static function render_marketing(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Unauthorized' );
+		}
+
+		$settings = class_exists( '\\LuxVerified\\Marketing' )
+			? Marketing::all()
+			: [];
+		$tools = class_exists( '\\LuxVerified\\Marketing' )
+			? Marketing::tool_catalog()
+			: [];
+		$workflow = class_exists( '\\LuxVerified\\Marketing' )
+			? Marketing::weekly_workflow()
+			: [];
+		$prompts = class_exists( '\\LuxVerified\\Marketing' )
+			? Marketing::workflow_templates()
+			: [];
+
+		$grouped_tools = [];
+		foreach ( $tools as $tool_key => $tool ) {
+			$category = $tool['category'] ?? 'Other';
+			if ( ! isset( $grouped_tools[ $category ] ) ) {
+				$grouped_tools[ $category ] = [];
+			}
+			$grouped_tools[ $category ][ $tool_key ] = $tool;
+		}
+
+		require LUXVV_DIR . 'includes/views/marketing.php';
 	}
 
 	public static function render_events(): void {

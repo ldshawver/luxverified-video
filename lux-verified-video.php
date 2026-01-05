@@ -48,6 +48,7 @@ luxvv_require( 'includes/class-analytics.php' );
 luxvv_require( 'includes/class-ajax.php' );
 luxvv_require( 'includes/class-payouts.php' );
 luxvv_require( 'includes/class-ai.php' );
+luxvv_require( 'includes/class-marketing.php' );
 luxvv_require( 'includes/class-rest-ai.php' );
 luxvv_require( 'includes/class-verification.php' );
 luxvv_require( 'includes/class-admin-menu.php' );
@@ -129,6 +130,10 @@ add_action( 'init', function () {
 
 	if ( class_exists( 'LuxVerified\\AI' ) ) {
 		\LuxVerified\AI::init();
+	}
+
+	if ( class_exists( 'LuxVerified\\Marketing' ) ) {
+		\LuxVerified\Marketing::init();
 	}
 
 	if ( class_exists( 'LuxVerified\\Rest_AI' ) ) {
