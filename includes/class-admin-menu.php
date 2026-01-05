@@ -308,10 +308,22 @@ final class Admin_Menu {
 							<th>CPM</th>
 							<th>Payout</th>
 							<th>Status</th>
+							<th>Paid At</th>
+							<th>Actions</th>
 						</tr>
 					</thead>
 					<tbody>
 					<?php foreach ( $rows as $row ) : ?>
+						<?php
+						$payout_id = (int) ( $row['id'] ?? 0 );
+						$is_paid = ( $row['status'] ?? '' ) === 'paid';
+						$receipt_url = $payout_id
+							? wp_nonce_url(
+								admin_url( 'admin-post.php?action=luxvv_download_receipt&payout_id=' . $payout_id ),
+								'luxvv_download_receipt_' . $payout_id
+							)
+							: '';
+						?>
 						<tr>
 							<td><?php echo (int) ( $row['user_id'] ?? 0 ); ?></td>
 							<td><?php echo esc_html( $row['period_start'] ?? '' ); ?> → <?php echo esc_html( $row['period_end'] ?? '' ); ?></td>
@@ -319,6 +331,30 @@ final class Admin_Menu {
 							<td><?php echo (int) ( $row['cpm_cents'] ?? 0 ); ?>¢</td>
 							<td><?php echo (int) ( $row['payout_cents'] ?? 0 ); ?>¢</td>
 							<td><?php echo esc_html( $row['status'] ?? 'pending' ); ?></td>
+							<td><?php echo esc_html( $row['paid_at'] ?? '' ); ?></td>
+							<td>
+								<?php if ( ! $is_paid ) : ?>
+									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="luxvv-inline-form">
+										<input type="hidden" name="action" value="luxvv_mark_payout_paid">
+										<input type="hidden" name="payout_id" value="<?php echo esc_attr( $payout_id ); ?>">
+										<?php wp_nonce_field( 'luxvv_mark_payout_paid' ); ?>
+										<input type="text" name="reference" placeholder="Reference">
+										<input type="text" name="notes" placeholder="Notes">
+										<button type="submit">Mark Paid</button>
+									</form>
+								<?php else : ?>
+									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="luxvv-inline-form">
+										<input type="hidden" name="action" value="luxvv_reset_payout">
+										<input type="hidden" name="payout_id" value="<?php echo esc_attr( $payout_id ); ?>">
+										<?php wp_nonce_field( 'luxvv_reset_payout' ); ?>
+										<input type="text" name="reason" placeholder="Reset reason">
+										<button type="submit">Reset</button>
+									</form>
+									<?php if ( $receipt_url ) : ?>
+										<a href="<?php echo esc_url( $receipt_url ); ?>">Receipt</a>
+									<?php endif; ?>
+								<?php endif; ?>
+							</td>
 						</tr>
 					<?php endforeach; ?>
 					</tbody>

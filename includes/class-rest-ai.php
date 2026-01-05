@@ -27,6 +27,36 @@ class Rest_AI {
             'callback' => [__CLASS__, 'diagnostics'],
             'permission_callback' => [__CLASS__, 'token_auth'],
         ]);
+
+        register_rest_route('luxvv/v1', '/analytics/summary', [
+            'methods'  => 'GET',
+            'callback' => [__CLASS__, 'analytics_summary'],
+            'permission_callback' => [__CLASS__, 'basic_auth_only'],
+        ]);
+
+        register_rest_route('luxvv/v1', '/payouts', [
+            'methods'  => 'GET',
+            'callback' => [__CLASS__, 'payouts_list'],
+            'permission_callback' => [__CLASS__, 'basic_auth_only'],
+        ]);
+
+        register_rest_route('luxvv/v1', '/payouts/(?P<id>\d+)/mark-paid', [
+            'methods'  => 'POST',
+            'callback' => [__CLASS__, 'payouts_mark_paid'],
+            'permission_callback' => [__CLASS__, 'basic_auth_only'],
+        ]);
+
+        register_rest_route('luxvv/v1', '/payouts/(?P<id>\d+)/reset', [
+            'methods'  => 'POST',
+            'callback' => [__CLASS__, 'payouts_reset'],
+            'permission_callback' => [__CLASS__, 'basic_auth_only'],
+        ]);
+
+        register_rest_route('luxvv/v1', '/payouts/(?P<id>\d+)/receipt', [
+            'methods'  => 'GET',
+            'callback' => [__CLASS__, 'payouts_receipt'],
+            'permission_callback' => [__CLASS__, 'basic_auth_only'],
+        ]);
     }
 
     public static function basic_auth_only() {
@@ -125,6 +155,85 @@ class Rest_AI {
             'plugin' => 'lux-verified-video',
             'version' => defined('LUXVV_VERSION') ? LUXVV_VERSION : '1.0.0',
             'time' => time(),
+        ];
+    }
+
+    public static function analytics_summary( $request ) {
+        $days = max( 1, min( 60, (int) $request->get_param( 'days' ) ) );
+        if ( class_exists( '\\LuxVerified\\Analytics' ) ) {
+            return \LuxVerified\Analytics::get_dashboard_summary( $days );
+        }
+        return [ 'error' => 'analytics_unavailable' ];
+    }
+
+    public static function payouts_list( $request ) {
+        global $wpdb;
+
+        $limit = max( 1, min( 200, (int) $request->get_param( 'limit' ) ) );
+        $status = sanitize_key( (string) $request->get_param( 'status' ) );
+        $t_payouts = $wpdb->prefix . 'lux_payouts';
+
+        if ( $status ) {
+            return $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT * FROM {$t_payouts} WHERE status = %s ORDER BY period_start DESC LIMIT %d",
+                    $status,
+                    $limit
+                ),
+                ARRAY_A
+            );
+        }
+
+        return $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$t_payouts} ORDER BY period_start DESC LIMIT %d",
+                $limit
+            ),
+            ARRAY_A
+        );
+    }
+
+    public static function payouts_mark_paid( $request ) {
+        $payout_id = (int) $request->get_param( 'id' );
+        $reference = sanitize_text_field( (string) $request->get_param( 'reference' ) );
+        $notes = sanitize_textarea_field( (string) $request->get_param( 'notes' ) );
+
+        if ( ! class_exists( '\\LuxVerified\\Payouts' ) ) {
+            return [ 'error' => 'payouts_unavailable' ];
+        }
+
+        \LuxVerified\Payouts::mark_payout_paid( $payout_id, $reference, $notes );
+        return [ 'success' => true, 'payout_id' => $payout_id ];
+    }
+
+    public static function payouts_reset( $request ) {
+        $payout_id = (int) $request->get_param( 'id' );
+        $reason = sanitize_textarea_field( (string) $request->get_param( 'reason' ) );
+
+        if ( ! class_exists( '\\LuxVerified\\Payouts' ) ) {
+            return [ 'error' => 'payouts_unavailable' ];
+        }
+
+        \LuxVerified\Payouts::reset_payout( $payout_id, $reason );
+        return [ 'success' => true, 'payout_id' => $payout_id ];
+    }
+
+    public static function payouts_receipt( $request ) {
+        global $wpdb;
+        $payout_id = (int) $request->get_param( 'id' );
+        $t_payouts = $wpdb->prefix . 'lux_payouts';
+        $row = $wpdb->get_row(
+            $wpdb->prepare( "SELECT id, receipt_path, status FROM {$t_payouts} WHERE id = %d", $payout_id ),
+            ARRAY_A
+        );
+
+        if ( ! $row || ( $row['status'] ?? '' ) !== 'paid' ) {
+            return [ 'error' => 'receipt_unavailable' ];
+        }
+
+        return [
+            'payout_id' => $payout_id,
+            'receipt_path' => $row['receipt_path'] ?? '',
         ];
     }
 }
