@@ -7,10 +7,12 @@ on:
 
 jobs:
   deploy:
+    name: Deploy Plugin (Production)
     runs-on: ubuntu-latest
+    environment: production   # 🔒 REQUIRED
 
     steps:
-      - name: Checkout repo (for metadata only)
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -24,16 +26,16 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.LUX_VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.LUX_VPS_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -p 65002 "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Check VPS version
         id: check
         run: |
-          VPS_VERSION=$(ssh -i ~/.ssh/id_ed25519 \
-            ${{ secrets.LUX_VPS_USER }}@${{ secrets.LUX_VPS_HOST }} \
-            "cat ${{ secrets.LUX_VPS_PATH }}/VERSION || echo 0.0.0")
+          VPS_VERSION=$(ssh -p 65002 -i ~/.ssh/id_ed25519 \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "cat '${{ secrets.DEPLOY_PATH }}/VERSION' 2>/dev/null || echo 0.0.0")
 
           TAG_VERSION="${{ steps.version.outputs.tag_version }}"
 
@@ -46,18 +48,20 @@ jobs:
             echo "deploy=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Deploy to VPS
+      - name: Deploy plugin via rsync
         if: steps.check.outputs.deploy == 'true'
         run: |
-          ssh -i ~/.ssh/id_ed25519 \
-            ${{ secrets.LUX_VPS_USER }}@${{ secrets.LUX_VPS_HOST }} << 'EOF'
-              set -e
-              cd ${{ secrets.LUX_VPS_PATH }}
-              git fetch --tags
-              git checkout v${{ steps.version.outputs.tag_version }}
-              echo "${{ steps.version.outputs.tag_version }}" > VERSION
-              systemctl restart lux
-          EOF
+          rsync -av --delete \
+            --exclude=".git/" \
+            --exclude=".github/" \
+            --exclude="node_modules/" \
+            --exclude="vendor/" \
+            ./ \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/"
+
+          ssh -p 65002 -i ~/.ssh/id_ed25519 \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "echo '${{ steps.version.outputs.tag_version }}' > '${{ secrets.DEPLOY_PATH }}/VERSION'"
 
       - name: Skip deploy (version not newer)
         if: steps.check.outputs.deploy == 'false'
