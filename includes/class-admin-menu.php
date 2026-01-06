@@ -15,7 +15,7 @@ final class Admin_Menu {
 			'manage_options',
 			self::SLUG,
 			[ __CLASS__, 'render_dashboard' ],
-			'dashicons-shield-alt',
+			'dashicons-yes-alt',
 			58
 		);
 

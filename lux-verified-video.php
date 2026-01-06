@@ -164,6 +164,10 @@ add_action( 'admin_init', function () {
 		\LuxVerified\Admin::init();
 	}
 
+	if ( class_exists( 'LuxVerified\\Settings' ) ) {
+		\LuxVerified\Settings::register();
+	}
+
 	if ( class_exists( 'LuxVerified\\PDF_Controller' ) ) {
 		\LuxVerified\PDF_Controller::init();
 	}
