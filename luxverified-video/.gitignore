@@ -1,0 +1,21 @@
+
+.DS_Store
+
+# Node / Composer
+vendor/**/docs/
+
+# Logs
+*.log
+
+# WP build junk
+*.zip
+*.tar.gz
+
+
+# Env
+.env
+
+.vscode/
+.idea/
+
+/vendor/

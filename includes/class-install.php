@@ -1,251 +1,115 @@
 <?php
 namespace LuxVerified;
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
 
-final class Install {
+class Install {
 
-	public static function activate(): void {
+    public static function activate() {
+        global $wpdb;
 
-		self::create_videos_table();
-		self::create_events_table();
-		self::create_rollups_table();
-		self::create_members_table();
-		self::create_payouts_table();
-		self::create_payout_resets_table();
-		self::create_audit_table();
+        $charset_collate = $wpdb->get_charset_collate();
 
-		self::maybe_upgrade();
+        $tbl_members   = $wpdb->prefix . 'lux_verified_members';
+        $tbl_videos    = $wpdb->prefix . 'lux_videos';
+        $tbl_events    = $wpdb->prefix . 'lux_video_events';
+        $tbl_actors    = $wpdb->prefix . 'lux_video_actors';
+        $tbl_payouts   = $wpdb->prefix . 'lux_payouts';
+        $tbl_resets    = $wpdb->prefix . 'lux_payout_resets';
 
-		if ( class_exists( '\\LuxVerified\\Settings' ) ) {
-			Settings::maybe_seed_defaults();
-		}
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-		if ( class_exists( '\\LuxVerified\\Analytics' ) ) {
-			Analytics::schedule();
-		}
+        $sql1 = "CREATE TABLE $tbl_members (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            selfie_id BIGINT UNSIGNED DEFAULT 0,
+            contract_status VARCHAR(30) DEFAULT 'pending',
+            profile_complete TINYINT(1) DEFAULT 0,
+            admin_status VARCHAR(30) DEFAULT 'pending',
+            notes TEXT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY user_id (user_id)
+        ) $charset_collate;";
 
-		if ( class_exists( '\\LuxVerified\\Payouts' ) ) {
-			Payouts::schedule();
-		}
+        $sql2 = "CREATE TABLE $tbl_videos (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            post_id BIGINT UNSIGNED DEFAULT 0,
+            bunny_guid VARCHAR(255) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            thumb_url TEXT NULL,
+            duration INT DEFAULT 0,
+            status VARCHAR(30) DEFAULT 'pending',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY bunny_guid (bunny_guid),
+            KEY user_id (user_id)
+        ) $charset_collate;";
 
-		// Default: auto-approve OFF
-		if ( get_option( 'luxvv_auto_approve_after_w9', null ) === null ) {
-			add_option( 'luxvv_auto_approve_after_w9', 0 );
-		}
-	}
+        $sql3 = "CREATE TABLE $tbl_events (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            video_id BIGINT UNSIGNED NOT NULL,
+            user_id BIGINT UNSIGNED DEFAULT 0,
+            event_type VARCHAR(50) NOT NULL,
+            watch_seconds INT DEFAULT 0,
+            ip_hash VARCHAR(64) NULL,
+            ua_hash VARCHAR(64) NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY video_id (video_id),
+            KEY event_type (event_type)
+        ) $charset_collate;";
 
-	public static function maybe_upgrade(): void {
-		$version = (string) get_option( 'luxvv_db_version', '' );
-		if ( $version === LUXVV_VERSION ) {
-			return;
-		}
+        $sql4 = "CREATE TABLE $tbl_actors (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            video_id BIGINT UNSIGNED NOT NULL,
+            actor_user_id BIGINT UNSIGNED NOT NULL,
+            PRIMARY KEY (id),
+            KEY video_id (video_id),
+            KEY actor_user_id (actor_user_id)
+        ) $charset_collate;";
 
-		self::create_videos_table();
-		self::create_events_table();
-		self::create_rollups_table();
-		self::create_members_table();
-		self::create_payouts_table();
-		self::create_payout_resets_table();
-		self::create_audit_table();
+        $sql5 = "CREATE TABLE $tbl_payouts (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            period VARCHAR(20) NOT NULL,
+            views INT DEFAULT 0,
+            revenue DECIMAL(10,2) DEFAULT 0.00,
+            is_paid TINYINT(1) DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY user_id (user_id),
+            KEY period (period)
+        ) $charset_collate;";
 
-		update_option( 'luxvv_db_version', LUXVV_VERSION, false );
-	}
+        $sql6 = "CREATE TABLE $tbl_resets (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            admin_id BIGINT UNSIGNED NOT NULL,
+            user_id BIGINT UNSIGNED DEFAULT 0,
+            period VARCHAR(20) DEFAULT '',
+            note TEXT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id)
+        ) $charset_collate;";
 
-	private static function create_videos_table(): void {
+        dbDelta( $sql1 );
+        dbDelta( $sql2 );
+        dbDelta( $sql3 );
+        dbDelta( $sql4 );
+        dbDelta( $sql5 );
+        dbDelta( $sql6 );
 
-		global $wpdb;
-		$table = $wpdb->prefix . 'lux_videos';
-		$charset_collate = $wpdb->get_charset_collate();
-
-		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-
-		$sql = "CREATE TABLE {$table} (
-			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-			post_id BIGINT(20) UNSIGNED NULL,
-			owner_user_id BIGINT(20) UNSIGNED NOT NULL,
-			title VARCHAR(255) NULL,
-			bunny_video_guid VARCHAR(191) NOT NULL,
-			status VARCHAR(50) NOT NULL DEFAULT 'uploading',
-			cdn_url VARCHAR(255) NULL,
-			created_at DATETIME NOT NULL,
-			updated_at DATETIME NOT NULL,
-			PRIMARY KEY  (id),
-			UNIQUE KEY bunny_video_guid (bunny_video_guid),
-			KEY owner_user_id (owner_user_id),
-			KEY post_id (post_id)
-		) {$charset_collate};";
-
-		dbDelta( $sql );
-	}
-
-	private static function create_events_table(): void {
-
-		global $wpdb;
-		$table = $wpdb->prefix . 'lux_video_events';
-		$charset_collate = $wpdb->get_charset_collate();
-
-		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-
-		$sql = "CREATE TABLE {$table} (
-			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-			created_at DATETIME NOT NULL,
-			owner_user_id BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
-			viewer_user_id BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
-			session_id VARCHAR(64) NULL,
-			post_id BIGINT(20) UNSIGNED NULL,
-			bunny_video_guid VARCHAR(191) NOT NULL,
-			event_type VARCHAR(32) NOT NULL,
-			current_time INT NOT NULL DEFAULT 0,
-			payload LONGTEXT NULL,
-			ip_hash CHAR(64) NULL,
-			user_agent VARCHAR(500) NULL,
-			referrer VARCHAR(500) NULL,
-			PRIMARY KEY  (id),
-			KEY created_at (created_at),
-			KEY owner_user_id (owner_user_id),
-			KEY bunny_video_guid (bunny_video_guid),
-			KEY session_id (session_id)
-		) {$charset_collate};";
-
-		dbDelta( $sql );
-	}
-
-	private static function create_rollups_table(): void {
-
-		global $wpdb;
-		$table = $wpdb->prefix . 'lux_video_rollups';
-		$charset_collate = $wpdb->get_charset_collate();
-
-		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-
-		$sql = "CREATE TABLE {$table} (
-			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-			day DATE NOT NULL,
-			owner_user_id BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
-			post_id BIGINT(20) UNSIGNED NULL,
-			bunny_video_guid VARCHAR(191) NOT NULL,
-			impressions INT NOT NULL DEFAULT 0,
-			plays INT NOT NULL DEFAULT 0,
-			views_20s INT NOT NULL DEFAULT 0,
-			completes INT NOT NULL DEFAULT 0,
-			watch_seconds INT NOT NULL DEFAULT 0,
-			p25 INT NOT NULL DEFAULT 0,
-			p50 INT NOT NULL DEFAULT 0,
-			p75 INT NOT NULL DEFAULT 0,
-			p100 INT NOT NULL DEFAULT 0,
-			PRIMARY KEY  (id),
-			UNIQUE KEY day_guid (day, bunny_video_guid),
-			KEY owner_user_id (owner_user_id),
-			KEY post_id (post_id)
-		) {$charset_collate};";
-
-		dbDelta( $sql );
-	}
-
-	private static function create_members_table(): void {
-
-		global $wpdb;
-		$table = $wpdb->prefix . 'lux_verified_members';
-		$charset_collate = $wpdb->get_charset_collate();
-
-		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-
-		$sql = "CREATE TABLE {$table} (
-			user_id BIGINT(20) UNSIGNED NOT NULL,
-			verification_status VARCHAR(50) NOT NULL,
-			created_at DATETIME NOT NULL,
-			updated_at DATETIME NOT NULL,
-			PRIMARY KEY (user_id),
-			KEY verification_status (verification_status),
-			KEY updated_at (updated_at)
-		) {$charset_collate};";
-
-		dbDelta( $sql );
-	}
-
-	private static function create_audit_table(): void {
-
-		global $wpdb;
-		$table = $wpdb->prefix . 'luxvv_audit';
-		$charset_collate = $wpdb->get_charset_collate();
-
-		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-
-		$sql = "CREATE TABLE {$table} (
-			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-			created_at DATETIME NOT NULL,
-			admin_user_id BIGINT(20) UNSIGNED NULL,
-			target_user_id BIGINT(20) UNSIGNED NOT NULL,
-			action VARCHAR(50) NOT NULL,
-			meta LONGTEXT NULL,
-			ip VARCHAR(45) NULL,
-			PRIMARY KEY  (id),
-			KEY target_user_id (target_user_id),
-			KEY action (action),
-			KEY created_at (created_at)
-		) {$charset_collate};";
-
-		dbDelta( $sql );
-	}
-
-	private static function create_payouts_table(): void {
-
-		global $wpdb;
-		$table = $wpdb->prefix . 'lux_payouts';
-		$charset_collate = $wpdb->get_charset_collate();
-
-		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-
-		$sql = "CREATE TABLE {$table} (
-			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-			period_start DATE NOT NULL,
-			period_end DATE NOT NULL,
-			user_id BIGINT(20) UNSIGNED NOT NULL,
-			impressions INT NOT NULL DEFAULT 0,
-			plays INT NOT NULL DEFAULT 0,
-			views_20s INT NOT NULL DEFAULT 0,
-			cpm_cents INT NOT NULL DEFAULT 0,
-			payout_cents INT NOT NULL DEFAULT 0,
-			ctr FLOAT NOT NULL DEFAULT 0,
-			retention_rate FLOAT NOT NULL DEFAULT 0,
-			bonus_pct FLOAT NOT NULL DEFAULT 0,
-			status VARCHAR(20) NOT NULL DEFAULT 'pending',
-			paid_at DATETIME NULL,
-			paid_by BIGINT(20) UNSIGNED NULL,
-			paid_reference VARCHAR(100) NULL,
-			paid_notes TEXT NULL,
-			receipt_path VARCHAR(255) NULL,
-			created_at DATETIME NOT NULL,
-			updated_at DATETIME NOT NULL,
-			PRIMARY KEY  (id),
-			UNIQUE KEY period_user (period_start, period_end, user_id),
-			KEY user_id (user_id),
-			KEY status (status)
-		) {$charset_collate};";
-
-		dbDelta( $sql );
-	}
-
-	private static function create_payout_resets_table(): void {
-
-		global $wpdb;
-		$table = $wpdb->prefix . 'lux_payout_resets';
-		$charset_collate = $wpdb->get_charset_collate();
-
-		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-
-		$sql = "CREATE TABLE {$table} (
-			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-			payout_id BIGINT(20) UNSIGNED NOT NULL,
-			admin_user_id BIGINT(20) UNSIGNED NULL,
-			reason TEXT NULL,
-			created_at DATETIME NOT NULL,
-			PRIMARY KEY  (id),
-			KEY payout_id (payout_id),
-			KEY admin_user_id (admin_user_id)
-		) {$charset_collate};";
-
-		dbDelta( $sql );
-	}
+        add_option( 'luxvv_bunny_library_id', '494980' );
+        add_option( 'luxvv_bunny_hostname', 'vz-d469c60f-3ca.b-cdn.net' );
+        add_option( 'luxvv_bunny_api_key', '1d5c0661-57c5-4a27-bcc5f8977272-4924-4883' );
+        add_option( 'luxvv_bunny_webhook_url', 'https://lucifercruz.com/wp-json/luxvv/v1/videos/webhook' );
+        add_option( 'luxvv_forminator_id', '11099' );
+        add_option( 'luxvv_regmagic_shortcode', "[RM_Forms id='1']" );
+        add_option( 'luxvv_w9_iframe', 'https://adiken.na4.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhBsm1v6MiHht-eSYJwiIo6J5loh-RkG0jeTMWVDXfO84eaez9VzmK96JEZRPV-Tp2E*' );
+        add_option( 'luxvv_badge_location', 'both' );
+    }
 }

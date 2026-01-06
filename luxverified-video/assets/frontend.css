@@ -1,0 +1,159 @@
+.luxvv-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.luxvv-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+}
+
+.luxvv-card-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.luxvv-card-value {
+  font-size: 20px;
+  font-weight: 800;
+  margin-top: 4px;
+}
+
+.luxvv-chart {
+  margin-top: 16px;
+}
+
+.luxvv-chart-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 60px;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.luxvv-chart-bar {
+  background: #e2e8f0;
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+}
+
+.luxvv-chart-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #38bdf8);
+}
+
+.luxvv-video-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.luxvv-video-card {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #ffffff;
+}
+
+.luxvv-video-meta {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0;
+  font-size: 12px;
+  color: #475569;
+}
+
+.luxvv-video-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.luxvv-chip {
+  display: inline-block;
+  background: #fef9c3;
+  color: #92400e;
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+.luxvv-video-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.luxvv-creator-payouts table,
+.luxvv-creator-payouts th,
+.luxvv-creator-payouts td {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-collapse: collapse;
+}
+
+.luxvv-creator-payouts table {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.luxvv-creator-payouts th,
+.luxvv-creator-payouts td {
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.luxvv-upload-form input[type="text"],
+.luxvv-upload-form textarea {
+  width: 100%;
+  max-width: 520px;
+}
+
+@media (max-width: 720px) {
+  .luxvv-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .luxvv-card {
+    aspect-ratio: 1 / 1;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+
+  .luxvv-card-label {
+    font-size: 11px;
+  }
+
+  .luxvv-card-value {
+    font-size: 22px;
+  }
+
+  .luxvv-chart-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 420px) {
+  .luxvv-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .luxvv-card {
+    aspect-ratio: auto;
+    min-height: 160px;
+  }
+}

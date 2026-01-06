@@ -1,129 +1,111 @@
 <?php
 namespace LuxVerified;
 
-if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
 
-final class Settings {
+class Settings {
 
-    /** @return string */
-    public static function opt_key(): string {
-        return 'luxvv_settings';
-    }
+    private static $instance = null;
 
-    public static function init(): void {
-        add_action( 'admin_init', [ __CLASS__, 'register' ] );
-    }
-
-    public static function register(): void {
-
-        if ( false === get_option( self::opt_key(), false ) ) {
-            add_option( self::opt_key(), self::defaults(), '', false );
+    public static function instance() : self {
+        if ( null === self::$instance ) {
+            self::$instance = new self();
         }
+        return self::$instance;
+    }
 
-        register_setting(
-            'luxvv_settings_group',
-            self::opt_key(),
-            [
-                'type'              => 'array',
-                'sanitize_callback' => [ __CLASS__, 'sanitize' ],
-                'default'           => self::defaults(),
-            ]
+    private function __construct() {
+        add_action( 'admin_menu', [ $this, 'admin_menu' ] );
+        add_action( 'admin_init', [ $this, 'register_settings' ] );
+    }
+
+    public function admin_menu() {
+        add_menu_page(
+            __( 'LUX Verified', 'lux-verified-video' ),
+            __( 'LUX Verified', 'lux-verified-video' ),
+            'manage_options',
+            'luxvv',
+            [ $this, 'settings_page' ],
+            'dashicons-yes',
+            60
         );
     }
 
-    /* ======================================================
-     * DEFAULTS
-     * ====================================================== */
-
-    public static function defaults(): array {
-
-        return [
-            // Verification forms
-            'agreement_form_id' => 0,
-            'w9_form_id'        => 0,
-
-            // 🔐 Verification behavior
-            'auto_approve_after_w9' => 0,
-
-            // Bunny
-            'bunny_library_id'  => '',
-            'bunny_api_key'     => '',
-            'bunny_cdn_host'    => '',
-            'bunny_webhook_url' => '',
-
-            // Analytics
-            'analytics_min_view_seconds' => 20,
-            'analytics_retention_days'   => 90,
-            'analytics_debug'            => 0,
-
-            // Payouts
-            'payout_minimum_cents' => 2500,
-            'payout_tiers_json'    => json_encode(
-                [
-                    [ 'min_views' => 0, 'cpm_cents' => 350 ],
-                    [ 'min_views' => 10000, 'cpm_cents' => 450 ],
-                    [ 'min_views' => 50000, 'cpm_cents' => 600 ],
-                ],
-                JSON_PRETTY_PRINT
-            ),
-            'payout_ctr_bonus_threshold' => 0.05,
-            'payout_retention_bonus_threshold' => 0.75,
-
-            'debug' => 0,
-        ];
+    public function register_settings() {
+        register_setting( 'luxvv-settings', 'luxvv_bunny_library_id' );
+        register_setting( 'luxvv-settings', 'luxvv_bunny_hostname' );
+        register_setting( 'luxvv-settings', 'luxvv_bunny_api_key' );
+        register_setting( 'luxvv-settings', 'luxvv_bunny_webhook_url' );
+        register_setting( 'luxvv-settings', 'luxvv_forminator_id' );
+        register_setting( 'luxvv-settings', 'luxvv_regmagic_shortcode' );
+        register_setting( 'luxvv-settings', 'luxvv_w9_iframe' );
+        register_setting( 'luxvv-settings', 'luxvv_badge_location' );
+        register_setting( 'luxvv-settings', 'luxvv_pmpro_levels' );
     }
 
-    /* ======================================================
-     * SANITIZATION
-     * ====================================================== */
-
-    public static function sanitize( $in ): array {
-
-        $in  = is_array( $in ) ? $in : [];
-        $out = self::defaults();
-
-        foreach ( $out as $key => $default ) {
-
-            if ( ! array_key_exists( $key, $in ) ) {
-                continue;
-            }
-
-            if ( is_int( $default ) ) {
-                $out[ $key ] = absint( $in[ $key ] );
-            }
-            elseif ( in_array( $key, [ 'payout_ctr_bonus_threshold', 'payout_retention_bonus_threshold' ], true ) ) {
-                $out[ $key ] = (float) $in[ $key ];
-            }
-            elseif ( strpos( $key, '_url' ) !== false ) {
-                $out[ $key ] = esc_url_raw( $in[ $key ] );
-            }
-            elseif ( $key === 'payout_tiers_json' ) {
-                $out[ $key ] = wp_kses_post( $in[ $key ] );
-            }
-            else {
-                $out[ $key ] = sanitize_text_field( $in[ $key ] );
-            }
-        }
-
-        return $out;
-    }
-
-    /* ======================================================
-     * ACCESSORS
-     * ====================================================== */
-
-    public static function get( string $key, $default = null ) {
-        $opts = get_option( self::opt_key(), self::defaults() );
-        return $opts[ $key ] ?? $default;
-    }
-
-    public static function all(): array {
-        return get_option( self::opt_key(), self::defaults() );
-    }
-
-    public static function maybe_seed_defaults(): void {
-        if ( false === get_option( self::opt_key(), false ) ) {
-            add_option( self::opt_key(), self::defaults(), '', false );
-        }
+    public function settings_page() {
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e( 'LUX Verified Settings', 'lux-verified-video' ); ?></h1>
+            <form method="post" action="options.php">
+                <?php settings_fields( 'luxvv-settings' ); ?>
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">Bunny Library ID</th>
+                        <td><input type="text" name="luxvv_bunny_library_id" value="<?php echo esc_attr( get_option( 'luxvv_bunny_library_id' ) ); ?>" class="regular-text"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Bunny CDN Hostname</th>
+                        <td><input type="text" name="luxvv_bunny_hostname" value="<?php echo esc_attr( get_option( 'luxvv_bunny_hostname' ) ); ?>" class="regular-text"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Bunny API Key</th>
+                        <td><input type="text" name="luxvv_bunny_api_key" value="<?php echo esc_attr( get_option( 'luxvv_bunny_api_key' ) ); ?>" class="regular-text"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Webhook URL</th>
+                        <td><input type="text" name="luxvv_bunny_webhook_url" value="<?php echo esc_url( get_option( 'luxvv_bunny_webhook_url' ) ); ?>" class="regular-text"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Forminator Form (Step 1)</th>
+                        <td><input type="text" name="luxvv_forminator_id" value="<?php echo esc_attr( get_option( 'luxvv_forminator_id' ) ); ?>" class="regular-text">
+                            <p class="description">Shortcode: [forminator_form id="<?php echo esc_attr( get_option( 'luxvv_forminator_id', '11099' ) ); ?>"]</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">RegistrationMagic Shortcode (Step 2)</th>
+                        <td><input type="text" name="luxvv_regmagic_shortcode" value="<?php echo esc_attr( get_option( 'luxvv_regmagic_shortcode' ) ); ?>" class="regular-text"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">W9 / Adobe Iframe (Step 3)</th>
+                        <td>
+                            <textarea name="luxvv_w9_iframe" rows="4" class="large-text"><?php echo esc_textarea( get_option( 'luxvv_w9_iframe' ) ); ?></textarea>
+                            <p class="description">Paste the full iframe here.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Badge Location</th>
+                        <td>
+                            <select name="luxvv_badge_location">
+                                <?php $loc = get_option( 'luxvv_badge_location', 'both' ); ?>
+                                <option value="profile" <?php selected( $loc, 'profile' ); ?>>Profile</option>
+                                <option value="directory" <?php selected( $loc, 'directory' ); ?>>Directory</option>
+                                <option value="both" <?php selected( $loc, 'both' ); ?>>Both</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">PMPro Levels allowed to upload</th>
+                        <td><input type="text" name="luxvv_pmpro_levels" value="<?php echo esc_attr( get_option( 'luxvv_pmpro_levels', '' ) ); ?>" class="regular-text">
+                            <p class="description">Comma-separated level IDs.</p>
+                        </td>
+                    </tr>
+                </table>
+                <?php submit_button(); ?>
+            </form>
+        </div>
+        <?php
     }
 }

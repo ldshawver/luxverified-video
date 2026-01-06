@@ -1,0 +1,441 @@
+/* =========================================================
+   LUX VERIFIED — ADMIN (Requests page)
+   Clean + high-contrast
+   ======================================================= */
+
+body.luxvv_page_luxvv-requests {
+  background: #eaf0ff;
+}
+
+body.luxvv_page_luxvv-requests .wrap.luxvv-wrap {
+  background: transparent;
+  padding: 20px 18px;
+  color: #0f172a;
+}
+
+/* Header */
+.luxvv-headbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 14px;
+}
+
+.luxvv-h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: #334155; /* light-ish slate */
+}
+
+.luxvv-head-actions .button.luxvv-repair-btn {
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+}
+
+/* Funnel */
+.luxvv-funnel {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+
+.luxvv-stat {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.luxvv-stat-k {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.luxvv-stat-v {
+  font-size: 20px;
+  color: #0f172a;
+  font-weight: 900;
+  margin-top: 4px;
+}
+
+.luxvv-stat-ok {
+  border-color: rgba(34, 197, 94, 0.25);
+}
+
+/* Filters */
+.luxvv-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 14px;
+}
+
+/* Important: WP button styles override easily, so force with specificity + !important */
+.luxvv-filters .button.luxvv-filter {
+  background: #ffffff !important;
+  color: #1e3a8a !important;
+  border: 1px solid rgba(30, 58, 138, 0.18) !important;
+  border-radius: 8px !important;        /* rectangle */
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06) !important;
+  line-height: 1.2 !important;
+}
+
+.luxvv-filters .button.luxvv-filter:hover {
+  background: #f5f8ff !important;
+  border-color: rgba(37, 99, 235, 0.35) !important;
+}
+
+.luxvv-filters .button.luxvv-filter.active {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.28) !important;
+}
+
+/* Table card */
+.luxvv-table-wrap {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  overflow: auto;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.10);
+}
+
+/* Table */
+table.luxvv-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+table.luxvv-table thead th {
+  background: #f1f5ff;
+  color: #1e3a8a;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  font-weight: 900;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(30, 58, 138, 0.18);
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+table.luxvv-table td {
+  padding: 12px 14px;
+  color: #0f172a;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  vertical-align: middle;
+}
+
+/* Dashboard cards */
+.luxvv-dashboard .luxvv-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.luxvv-dashboard .luxvv-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.luxvv-dashboard .luxvv-card-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.luxvv-dashboard .luxvv-card-value {
+  font-size: 22px;
+  font-weight: 900;
+  color: #0f172a;
+  margin-top: 6px;
+}
+
+.luxvv-dashboard .luxvv-bars {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.luxvv-dashboard .luxvv-bar span {
+  display: block;
+  font-size: 12px;
+  color: #475569;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.luxvv-dashboard .luxvv-bar-track {
+  background: #e2e8f0;
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+}
+
+.luxvv-dashboard .luxvv-bar-fill {
+  background: linear-gradient(90deg, #2563eb, #38bdf8);
+  height: 100%;
+  border-radius: 999px;
+}
+
+/* =========================================================
+   LUX Marketing
+   ======================================================= */
+
+.luxvv-marketing .description {
+  color: #475569;
+}
+
+.luxvv-marketing .luxvv-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  margin: 16px 0;
+}
+
+.luxvv-marketing .luxvv-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.luxvv-marketing .luxvv-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #f8fafc;
+}
+
+.luxvv-marketing .luxvv-tool-title {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.luxvv-marketing .luxvv-tool-note {
+  font-size: 12px;
+  color: #475569;
+}
+
+.luxvv-marketing .luxvv-tool-link {
+  font-size: 12px;
+  text-decoration: none;
+  color: #2563eb;
+}
+
+.luxvv-marketing .luxvv-prompt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.luxvv-marketing .luxvv-prompt textarea {
+  background: #f8fafc;
+}
+
+.luxvv-marketing .luxvv-workflow {
+  margin-left: 18px;
+}
+
+/* Sticky actions column */
+table.luxvv-table th.luxvv-actions-col,
+table.luxvv-table td.luxvv-actions-col {
+  position: sticky;
+  right: 0;
+  z-index: 4;
+  background: #ffffff;
+  text-align: right;
+  white-space: nowrap;
+  min-width: 240px;
+}
+
+table.luxvv-table thead th.luxvv-actions-col {
+  background: #f1f5ff;
+  z-index: 5;
+}
+
+/* Row tints by status */
+tr.luxvv-status-approved {
+  background: #ecfdf5;
+}
+tr.luxvv-status-ready_for_review {
+  background: #eff6ff;
+}
+tr.luxvv-status-step2_completed,
+tr.luxvv-status-step1_completed {
+  background: #f7fbff;
+}
+tr.luxvv-status-rejected {
+  background: #fef2f2;
+}
+
+table.luxvv-table tbody tr:hover {
+  background: #eaf2ff;
+}
+
+/* Badges */
+.luxvv-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.luxvv-badge-approved {
+  background: #dcfce7;
+  color: #166534;
+}
+.luxvv-badge-ready_for_review,
+.luxvv-badge-step2_completed,
+.luxvv-badge-step1_completed {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.luxvv-badge-rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.luxvv-badge-started {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+/* Buttons inside actions */
+.luxvv-actions-col .button {
+  border-radius: 10px !important;
+  padding: 7px 10px !important;
+  font-weight: 800 !important;
+  margin-left: 6px;
+}
+
+.luxvv-btn-disabled {
+  opacity: .45 !important;
+  pointer-events: none !important;
+}
+
+/* W-9 icon button */
+.luxvv-icon-btn {
+  padding: 7px 10px !important;
+  font-size: 15px !important;
+  line-height: 1 !important;
+}
+
+/* Muted */
+.luxvv-muted {
+  color: #64748b;
+  font-weight: 700;
+  margin-left: 8px;
+}
+
+/* Responsive */
+@media (max-width: 980px) {
+  .luxvv-funnel { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+  table.luxvv-table th.luxvv-actions-col,
+  table.luxvv-table td.luxvv-actions-col { min-width: 220px; }
+}
+/* ===== LUX Verified Requests ===== */
+
+body.luxvv_page_luxvv-requests {
+	background: #eef4ff;
+}
+
+body.luxvv_page_luxvv-requests .luxvv-title {
+	color: #334155 !important;   /* FIX */
+	font-size: 22px;
+	font-weight: 800;
+	margin-bottom: 16px;
+}
+
+.luxvv-table-wrap {
+	background: #ffffff;
+	border-radius: 12px;
+	box-shadow: 0 12px 30px rgba(0,0,0,.08);
+}
+
+.luxvv-status-approved { background:#ecfdf5; }
+.luxvv-status-ready_for_review { background:#eff6ff; }
+.luxvv-status-step2_completed,
+.luxvv-status-step1_completed { background:#f8fbff; }
+/* ===============================
+   LUXVV Rejection Modal
+   =============================== */
+
+.luxvv-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 99999;
+	display: none;
+}
+
+.luxvv-modal[aria-hidden="false"] {
+	display: block;
+}
+
+.luxvv-modal-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(0,0,0,0.55);
+}
+
+.luxvv-modal-box {
+	position: relative;
+	max-width: 520px;
+	margin: 10vh auto;
+	background: #ffffff;
+	border-radius: 10px;
+	padding: 24px;
+	box-shadow: 0 25px 60px rgba(0,0,0,0.35);
+}
+
+.luxvv-modal-box h2 {
+	margin: 0 0 8px;
+	font-size: 20px;
+	color: #0f172a;
+}
+
+.luxvv-modal-sub {
+	margin-bottom: 12px;
+	color: #475569;
+	font-size: 14px;
+}
+
+.luxvv-modal-box textarea {
+	width: 100%;
+	border: 1px solid #cbd5e1;
+	border-radius: 6px;
+	padding: 10px;
+	font-size: 14px;
+	resize: vertical;
+}
+
+.luxvv-modal-actions {
+	margin-top: 16px;
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+}

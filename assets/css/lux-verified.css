@@ -1,0 +1,25 @@
+.lux-verified-badge {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+.lux-verification-steps ol {
+    list-style: decimal;
+    margin-left: 20px;
+}
+.lux-status-pending {
+    background: #fff3cd;
+    color: #856404;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+.lux-status-approved {
+    background: #d4edda;
+    color: #155724;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+}
