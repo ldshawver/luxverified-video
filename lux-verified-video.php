@@ -2,7 +2,7 @@
 /**
  * Plugin Name: LUX Verified Video
  * Description: Verified creator uploads to Bunny Stream with analytics, payouts, and BuddyPress/PMPro integration.
- * Version: 1.0.0
+ * Version: 3.6.1
  * Author: Luke Shawver
  * Text Domain: lux-verified-video
  * Requires at least: 6.0
