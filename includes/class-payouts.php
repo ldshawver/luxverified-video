@@ -11,6 +11,7 @@ final class Payouts {
         add_action( 'admin_post_luxvv_mark_payout_paid', [ __CLASS__, 'handle_mark_paid' ] );
         add_action( 'admin_post_luxvv_reset_payout', [ __CLASS__, 'handle_reset_payout' ] );
         add_action( 'admin_post_luxvv_download_receipt', [ __CLASS__, 'handle_download_receipt' ] );
+        add_action( 'admin_post_luxvv_export_1099', [ __CLASS__, 'handle_export_1099' ] );
     }
 
     public static function schedule(): void {
@@ -257,6 +258,43 @@ final class Payouts {
         );
     }
 
+    public static function get_creator_earnings_summary( int $user_id ): array {
+        global $wpdb;
+        $t_payouts = $wpdb->prefix . 'lux_payouts';
+
+        $totals = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT
+                    COALESCE(SUM(payout_cents),0) AS total_cents,
+                    COALESCE(SUM(CASE WHEN status='paid' THEN payout_cents ELSE 0 END),0) AS paid_cents,
+                    COALESCE(SUM(CASE WHEN status!='paid' THEN payout_cents ELSE 0 END),0) AS pending_cents
+                 FROM {$t_payouts}
+                 WHERE user_id = %d",
+                $user_id
+            ),
+            ARRAY_A
+        );
+
+        $weeks = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT period_start, period_end, payout_cents, status
+                 FROM {$t_payouts}
+                 WHERE user_id = %d
+                 ORDER BY period_start DESC
+                 LIMIT 12",
+                $user_id
+            ),
+            ARRAY_A
+        );
+
+        return [
+            'total_cents' => (int) ( $totals['total_cents'] ?? 0 ),
+            'paid_cents' => (int) ( $totals['paid_cents'] ?? 0 ),
+            'pending_cents' => (int) ( $totals['pending_cents'] ?? 0 ),
+            'weekly' => $weeks,
+        ];
+    }
+
     public static function resolve_tier_name( int $views ): string {
         if ( $views >= 50000 ) {
             return 'Gold';
@@ -498,6 +536,7 @@ final class Payouts {
         $year = (int) gmdate( 'Y', current_time( 'timestamp' ) ) - 1;
         $start = "{$year}-01-01";
         $end = "{$year}-12-31";
+        $threshold_cents = (int) Settings::get( 'tax_1099_threshold_cents', 60000 );
 
         $t_payouts = $wpdb->prefix . 'lux_payouts';
 
@@ -505,7 +544,7 @@ final class Payouts {
             $wpdb->prepare(
                 "SELECT user_id, SUM(payout_cents) AS total_cents
                  FROM {$t_payouts}
-                 WHERE period_start BETWEEN %s AND %s
+                 WHERE period_end BETWEEN %s AND %s
                  GROUP BY user_id",
                 $start,
                 $end
@@ -525,6 +564,9 @@ final class Payouts {
             }
 
             $total = (int) $row['total_cents'];
+            if ( $total < $threshold_cents ) {
+                continue;
+            }
             $amount = number_format( $total / 100, 2 );
 
             $subject = "1099-NEC Summary for {$year}";
@@ -540,5 +582,90 @@ final class Payouts {
                 wp_mail( $admin_email, "Creator 1099-NEC Summary {$year}", "{$user->display_name} ({$user->user_email}): \${$amount}" );
             }
         }
+    }
+
+    public static function get_annual_earnings_for_export( int $year, int $threshold_cents ): array {
+        global $wpdb;
+
+        $start = "{$year}-01-01";
+        $end = "{$year}-12-31";
+        $t_payouts = $wpdb->prefix . 'lux_payouts';
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT user_id, SUM(payout_cents) AS total_cents
+                 FROM {$t_payouts}
+                 WHERE period_end BETWEEN %s AND %s
+                 GROUP BY user_id
+                 HAVING total_cents >= %d
+                 ORDER BY total_cents DESC",
+                $start,
+                $end,
+                $threshold_cents
+            ),
+            ARRAY_A
+        );
+
+        if ( ! $rows ) {
+            return [];
+        }
+
+        $output = [];
+        foreach ( $rows as $row ) {
+            $user_id = (int) $row['user_id'];
+            $user = get_userdata( $user_id );
+            if ( ! $user ) {
+                continue;
+            }
+
+            $last4 = get_user_meta( $user_id, 'luxvv_w9_tax_id_last4', true );
+            $tax_masked = $last4 ? '***-**-' . $last4 : '—';
+            $gross = (int) $row['total_cents'];
+            $fees = 0;
+            $net = $gross - $fees;
+
+            $output[] = [
+                'user_id' => $user_id,
+                'name' => $user->display_name,
+                'email' => $user->user_email,
+                'tax_id_masked' => $tax_masked,
+                'gross_earnings' => number_format( $gross / 100, 2 ),
+                'platform_fees' => number_format( $fees / 100, 2 ),
+                'net_payout' => number_format( $net / 100, 2 ),
+            ];
+        }
+
+        return $output;
+    }
+
+    public static function handle_export_1099(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( 'Forbidden' );
+        }
+
+        check_admin_referer( 'luxvv_export_1099' );
+
+        $year = isset( $_GET['year'] ) ? absint( $_GET['year'] ) : (int) gmdate( 'Y', current_time( 'timestamp' ) );
+        $threshold_cents = (int) Settings::get( 'tax_1099_threshold_cents', 60000 );
+
+        $rows = self::get_annual_earnings_for_export( $year, $threshold_cents );
+
+        header( 'Content-Type: text/csv' );
+        header( 'Content-Disposition: attachment; filename=luxvv-1099-' . $year . '.csv' );
+
+        $out = fopen( 'php://output', 'w' );
+        fputcsv( $out, [ 'Creator', 'Email', 'Tax ID (Masked)', 'Gross Earnings', 'Platform Fees', 'Net Payout' ] );
+        foreach ( $rows as $row ) {
+            fputcsv( $out, [
+                $row['name'],
+                $row['email'],
+                $row['tax_id_masked'],
+                $row['gross_earnings'],
+                $row['platform_fees'],
+                $row['net_payout'],
+            ] );
+        }
+        fclose( $out );
+        exit;
     }
 }

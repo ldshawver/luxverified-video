@@ -428,7 +428,53 @@ final class LUXVV_Plugin {
             ? \LuxVerified\Verification::derive_status_from_meta( $user_id )
             : 'unknown';
 
-        return '<div class="luxvv-creator-dashboard"><strong>Status:</strong> ' . esc_html( $status ) . '</div>';
+        $summary = class_exists( '\\LuxVerified\\Payouts' )
+            ? \LuxVerified\Payouts::get_creator_earnings_summary( $user_id )
+            : [
+                'total_cents' => 0,
+                'paid_cents' => 0,
+                'pending_cents' => 0,
+                'weekly' => [],
+            ];
+
+        ob_start();
+        ?>
+        <div class="luxvv-creator-dashboard">
+            <p><strong>Status:</strong> <?php echo esc_html( $status ); ?></p>
+
+            <h3>Earnings Summary</h3>
+            <ul>
+                <li>Total Lifetime Earnings: <?php echo number_format_i18n( (int) $summary['total_cents'] ); ?>¢</li>
+                <li>Paid Out: <?php echo number_format_i18n( (int) $summary['paid_cents'] ); ?>¢</li>
+                <li>Current Unpaid Balance: <?php echo number_format_i18n( (int) $summary['pending_cents'] ); ?>¢</li>
+            </ul>
+
+            <h3>Recent Weekly Payouts</h3>
+            <?php if ( empty( $summary['weekly'] ) ) : ?>
+                <p>No payout history yet.</p>
+            <?php else : ?>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Period</th>
+                            <th>Payout</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ( $summary['weekly'] as $row ) : ?>
+                        <tr>
+                            <td><?php echo esc_html( $row['period_start'] ); ?> → <?php echo esc_html( $row['period_end'] ); ?></td>
+                            <td><?php echo number_format_i18n( (int) $row['payout_cents'] ); ?>¢</td>
+                            <td><?php echo esc_html( $row['status'] ); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </div>
+        <?php
+        return (string) ob_get_clean();
     }
 
     private function enqueue_frontend_style(): void {

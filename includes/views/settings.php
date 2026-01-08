@@ -133,6 +133,20 @@ $form_id = isset( $settings['forminator_form_id'] )
 			</tr>
 		</table>
 
+		<h2>Tax & Compliance</h2>
+		<table class="form-table">
+			<tr>
+				<th>1099 Threshold (cents)</th>
+				<td>
+					<input type="number"
+						   name="luxvv_settings[tax_1099_threshold_cents]"
+						   value="<?php echo esc_attr( \LuxVerified\Settings::get( 'tax_1099_threshold_cents', 60000 ) ); ?>"
+					/>
+					<p class="description">Default 60000 = $600.00</p>
+				</td>
+			</tr>
+		</table>
+
 
 		<?php submit_button(); ?>
 	</form>

@@ -37,6 +37,7 @@ final class Verification {
 		add_filter( 'the_content', [ __CLASS__, 'inject_creator_badge' ] );
 		add_shortcode( 'luxvv_verified_badge', [ __CLASS__, 'shortcode_badge' ] );
 		add_shortcode( 'luxvv_can_upload', [ __CLASS__, 'shortcode_can_upload' ] );
+		add_shortcode( 'luxvv_w9_form', [ __CLASS__, 'shortcode_w9_form' ] );
 
 		add_filter( 'wpst_allow_video_submission', function () {
 			return is_user_logged_in() && self::can_upload( get_current_user_id() );
@@ -63,6 +64,7 @@ final class Verification {
 
 		if ( (int) $form_id === (int) Settings::get( 'w9_form_id' ) ) {
 			update_user_meta( $user_id, self::STEP3, 1 );
+			self::store_w9_submission( $user_id, is_array( $data ) ? $data : [] );
 		}
 
 		self::sync( $user_id );
@@ -309,5 +311,105 @@ final class Verification {
 		return self::is_verified( (int) $post->post_author )
 			? '<div class="luxvv-creator-badge"><span class="luxvv-badge luxvv-badge--ok">Verified Creator</span></div>' . $content
 			: $content;
+	}
+
+	public static function shortcode_w9_form(): string {
+		if ( ! is_user_logged_in() ) {
+			return '<div class="luxvv-blocked">Please log in to submit your W-9.</div>';
+		}
+
+		$form_id = (int) Settings::get( 'w9_form_id' );
+		if ( ! $form_id ) {
+			return '<div class="luxvv-blocked">W-9 form is not configured.</div>';
+		}
+
+		$status = get_user_meta( get_current_user_id(), 'luxvv_w9_status', true );
+		$submitted_at = get_user_meta( get_current_user_id(), 'luxvv_w9_submitted_at', true );
+
+		$summary = $status
+			? '<div class="luxvv-note">W-9 Status: ' . esc_html( ucfirst( $status ) ) . ( $submitted_at ? ' (Submitted ' . esc_html( $submitted_at ) . ')' : '' ) . '</div>'
+			: '';
+
+		return $summary . do_shortcode( '[forminator_form id="' . $form_id . '"]' );
+	}
+
+	private static function store_w9_submission( int $user_id, array $data ): void {
+		$fields = self::extract_w9_fields( $data );
+
+		$tax_id = '';
+		$tax_type = '';
+		if ( ! empty( $fields['ein'] ) ) {
+			$tax_id = $fields['ein'];
+			$tax_type = 'ein';
+		} elseif ( ! empty( $fields['ssn'] ) ) {
+			$tax_id = $fields['ssn'];
+			$tax_type = 'ssn';
+		}
+
+		$tax_id = Helpers::normalize_tax_id( $tax_id );
+		$tax_last4 = $tax_id ? substr( $tax_id, -4 ) : '';
+		$tax_encrypted = $tax_id ? Helpers::encrypt_sensitive( $tax_id ) : '';
+
+		update_user_meta( $user_id, 'luxvv_w9_legal_name', $fields['legal_name'] );
+		update_user_meta( $user_id, 'luxvv_w9_business_name', $fields['business_name'] );
+		update_user_meta( $user_id, 'luxvv_w9_entity_type', $fields['entity_type'] );
+		update_user_meta( $user_id, 'luxvv_w9_address', $fields['address'] );
+		update_user_meta( $user_id, 'luxvv_w9_city', $fields['city'] );
+		update_user_meta( $user_id, 'luxvv_w9_state', $fields['state'] );
+		update_user_meta( $user_id, 'luxvv_w9_zip', $fields['zip'] );
+		update_user_meta( $user_id, 'luxvv_w9_signature', $fields['signature'] );
+		update_user_meta( $user_id, 'luxvv_w9_tax_type', $tax_type );
+		update_user_meta( $user_id, 'luxvv_w9_tax_id_last4', $tax_last4 );
+
+		if ( $tax_encrypted ) {
+			update_user_meta( $user_id, 'luxvv_w9_tax_id_encrypted', $tax_encrypted );
+		}
+
+		if ( $tax_type === 'ein' ) {
+			update_user_meta( $user_id, 'luxvv_ein_masked', '***-**-' . $tax_last4 );
+			delete_user_meta( $user_id, 'luxvv_ssn_last4' );
+		} elseif ( $tax_type === 'ssn' ) {
+			update_user_meta( $user_id, 'luxvv_ssn_last4', $tax_last4 );
+			delete_user_meta( $user_id, 'luxvv_ein_masked' );
+		}
+
+		$field_keys = array_map( 'strval', array_keys( $data ) );
+		update_user_meta( $user_id, 'luxvv_w9_field_keys', wp_json_encode( $field_keys ) );
+
+		update_user_meta( $user_id, 'luxvv_w9_status', 'submitted' );
+		update_user_meta( $user_id, 'luxvv_w9_submitted_at', current_time( 'mysql' ) );
+
+		self::audit( get_current_user_id(), 'w9_submit', [
+			'user_id' => $user_id,
+			'tax_type' => $tax_type,
+			'last4' => $tax_last4,
+		] );
+	}
+
+	private static function extract_w9_fields( array $data ): array {
+		$lookup = static function ( array $keys ) use ( $data ): string {
+			foreach ( $data as $key => $value ) {
+				$key = strtolower( (string) $key );
+				foreach ( $keys as $match ) {
+					if ( strpos( $key, $match ) !== false ) {
+						return is_array( $value ) ? (string) reset( $value ) : (string) $value;
+					}
+				}
+			}
+			return '';
+		};
+
+		return [
+			'legal_name' => sanitize_text_field( $lookup( [ 'legal', 'full_name', 'name' ] ) ),
+			'business_name' => sanitize_text_field( $lookup( [ 'business', 'company' ] ) ),
+			'entity_type' => sanitize_text_field( $lookup( [ 'entity', 'tax_classification' ] ) ),
+			'address' => sanitize_text_field( $lookup( [ 'address' ] ) ),
+			'city' => sanitize_text_field( $lookup( [ 'city' ] ) ),
+			'state' => sanitize_text_field( $lookup( [ 'state' ] ) ),
+			'zip' => sanitize_text_field( $lookup( [ 'zip', 'postal' ] ) ),
+			'ssn' => sanitize_text_field( $lookup( [ 'ssn', 'social' ] ) ),
+			'ein' => sanitize_text_field( $lookup( [ 'ein', 'tax_id', 'tin' ] ) ),
+			'signature' => sanitize_text_field( $lookup( [ 'signature', 'acknowledg' ] ) ),
+		];
 	}
 }

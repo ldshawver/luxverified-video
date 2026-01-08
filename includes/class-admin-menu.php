@@ -66,6 +66,15 @@ final class Admin_Menu {
 
 		add_submenu_page(
 			self::SLUG,
+			'Tax & Compliance',
+			'Tax & Compliance',
+			'manage_options',
+			'luxvv-compliance',
+			[ __CLASS__, 'render_compliance' ]
+		);
+
+		add_submenu_page(
+			self::SLUG,
 			'Settings',
 			'Settings',
 			'manage_options',
@@ -327,14 +336,55 @@ final class Admin_Menu {
 			return;
 		}
 
+		$summary_rows = $wpdb->get_results(
+			"SELECT user_id,
+			        SUM(payout_cents) AS total_cents,
+			        SUM(CASE WHEN status='paid' THEN payout_cents ELSE 0 END) AS paid_cents,
+			        SUM(CASE WHEN status!='paid' THEN payout_cents ELSE 0 END) AS pending_cents
+			 FROM {$table}
+			 GROUP BY user_id
+			 ORDER BY total_cents DESC
+			 LIMIT 50",
+			ARRAY_A
+		);
+
 		$rows = $wpdb->get_results(
 			"SELECT * FROM {$table} ORDER BY period_start DESC LIMIT 50",
+			ARRAY_A
+		);
+
+		$resets_table = $wpdb->prefix . 'lux_payout_resets';
+		$reset_rows = $wpdb->get_results(
+			"SELECT * FROM {$resets_table} ORDER BY created_at DESC LIMIT 20",
 			ARRAY_A
 		);
 
 		?>
 		<div class="wrap">
 			<h1>Payouts</h1>
+			<?php if ( ! empty( $summary_rows ) ) : ?>
+				<h2>Creator Earnings Summary</h2>
+				<table class="widefat striped">
+					<thead>
+						<tr>
+							<th>User</th>
+							<th>Total</th>
+							<th>Paid</th>
+							<th>Pending</th>
+						</tr>
+					</thead>
+					<tbody>
+					<?php foreach ( $summary_rows as $summary ) : ?>
+						<tr>
+							<td><?php echo (int) $summary['user_id']; ?></td>
+							<td><?php echo number_format_i18n( (int) $summary['total_cents'] ); ?>¢</td>
+							<td><?php echo number_format_i18n( (int) $summary['paid_cents'] ); ?>¢</td>
+							<td><?php echo number_format_i18n( (int) $summary['pending_cents'] ); ?>¢</td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
 			<?php if ( empty( $rows ) ) : ?>
 				<p>No payouts found.</p>
 			<?php else : ?>
@@ -347,7 +397,9 @@ final class Admin_Menu {
 							<th>CPM</th>
 							<th>Payout</th>
 							<th>Status</th>
+							<th>Calculated</th>
 							<th>Paid At</th>
+							<th>Paid By</th>
 							<th>Actions</th>
 						</tr>
 					</thead>
@@ -370,7 +422,9 @@ final class Admin_Menu {
 							<td><?php echo (int) ( $row['cpm_cents'] ?? 0 ); ?>¢</td>
 							<td><?php echo (int) ( $row['payout_cents'] ?? 0 ); ?>¢</td>
 							<td><?php echo esc_html( $row['status'] ?? 'pending' ); ?></td>
+							<td><?php echo esc_html( $row['created_at'] ?? '' ); ?></td>
 							<td><?php echo esc_html( $row['paid_at'] ?? '' ); ?></td>
+							<td><?php echo (int) ( $row['paid_by'] ?? 0 ); ?></td>
 							<td>
 								<?php if ( ! $is_paid ) : ?>
 									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="luxvv-inline-form">
@@ -399,6 +453,30 @@ final class Admin_Menu {
 					</tbody>
 				</table>
 			<?php endif; ?>
+
+			<?php if ( ! empty( $reset_rows ) ) : ?>
+				<h2>Payout Reset Audit Trail</h2>
+				<table class="widefat striped">
+					<thead>
+						<tr>
+							<th>Payout ID</th>
+							<th>Admin</th>
+							<th>Reason</th>
+							<th>Created</th>
+						</tr>
+					</thead>
+					<tbody>
+					<?php foreach ( $reset_rows as $reset ) : ?>
+						<tr>
+							<td><?php echo (int) ( $reset['payout_id'] ?? 0 ); ?></td>
+							<td><?php echo (int) ( $reset['admin_user_id'] ?? 0 ); ?></td>
+							<td><?php echo esc_html( $reset['reason'] ?? '' ); ?></td>
+							<td><?php echo esc_html( $reset['created_at'] ?? '' ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
@@ -409,6 +487,48 @@ final class Admin_Menu {
 		}
 
 		require LUXVV_DIR . 'includes/views/settings.php';
+	}
+
+	public static function render_compliance(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Unauthorized' );
+		}
+
+		global $wpdb;
+		$year = isset( $_GET['year'] ) ? absint( $_GET['year'] ) : (int) gmdate( 'Y', current_time( 'timestamp' ) );
+		$threshold_cents = (int) Settings::get( 'tax_1099_threshold_cents', 60000 );
+
+		$w9_rows = $wpdb->get_results(
+			"
+			SELECT u.ID AS user_id,
+			       u.user_login,
+			       u.user_email,
+			       ws.meta_value AS w9_status,
+			       wt.meta_value AS w9_submitted_at,
+			       tt.meta_value AS tax_type,
+			       tl.meta_value AS tax_last4,
+			       wp.meta_value AS w9_pdf
+			FROM {$wpdb->users} u
+			LEFT JOIN {$wpdb->usermeta} ws ON ws.user_id = u.ID AND ws.meta_key = 'luxvv_w9_status'
+			LEFT JOIN {$wpdb->usermeta} wt ON wt.user_id = u.ID AND wt.meta_key = 'luxvv_w9_submitted_at'
+			LEFT JOIN {$wpdb->usermeta} tt ON tt.user_id = u.ID AND tt.meta_key = 'luxvv_w9_tax_type'
+			LEFT JOIN {$wpdb->usermeta} tl ON tl.user_id = u.ID AND tl.meta_key = 'luxvv_w9_tax_id_last4'
+			LEFT JOIN {$wpdb->usermeta} wp ON wp.user_id = u.ID AND wp.meta_key = 'luxvv_w9_pdf'
+			WHERE u.ID IN (
+				SELECT DISTINCT user_id
+				FROM {$wpdb->usermeta}
+				WHERE meta_key LIKE 'luxvv_%'
+			)
+			ORDER BY wt.meta_value DESC, u.user_login ASC
+			",
+			ARRAY_A
+		);
+
+		$annual_rows = class_exists( '\\LuxVerified\\Payouts' )
+			? Payouts::get_annual_earnings_for_export( $year, $threshold_cents )
+			: [];
+
+		require LUXVV_DIR . 'includes/views/compliance.php';
 	}
 
 	public static function render_ai(): void {

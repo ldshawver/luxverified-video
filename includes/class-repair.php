@@ -19,7 +19,9 @@ final class Repair {
 				'luxvv_step2',
 				'luxvv_step3',
 				'luxvv_verified',
-				'luxvv_w9_pdf'
+				'luxvv_w9_pdf',
+				'luxvv_w9_status',
+				'luxvv_w9_submitted_at'
 			)
 			"
 		);
