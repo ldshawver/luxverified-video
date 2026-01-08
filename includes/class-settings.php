@@ -68,6 +68,7 @@ final class Settings {
             ),
             'payout_ctr_bonus_threshold' => 0.05,
             'payout_retention_bonus_threshold' => 0.75,
+            'tax_1099_threshold_cents' => 60000,
 
             'debug' => 0,
         ];

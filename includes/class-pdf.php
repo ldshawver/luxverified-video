@@ -22,7 +22,7 @@ final class PDF {
 			);
 		}
 
-		$dir = self::get_upload_dir();
+		$dir = self::get_upload_subdir( 'w9' );
 		$file = sprintf(
 			'w9-%s-%s.pdf',
 			time(),
@@ -128,12 +128,18 @@ final class PDF {
 		$pdf->SetXY( 24, 45 );  $pdf->Write( 0, $get( 'business' ) );
 		$pdf->SetXY( 24, 63 );  $pdf->Write( 0, $get( 'address' ) );
 		$pdf->SetXY( 24, 71 );  $pdf->Write( 0, $get( 'city_state_zip' ) );
-		$pdf->SetXY( 140, 98 ); $pdf->Write( 0, $get( 'ein' ) );
+        if ( ! empty( $data['ein'] ) ) {
+            $pdf->SetXY( 140, 98 );
+            $pdf->Write( 0, $get( 'ein' ) );
+        }
 
-		if ( ! empty( $data['ssn_last4'] ) ) {
-			$pdf->SetXY( 140, 106 );
-			$pdf->Write( 0, '***-**-' . $get( 'ssn_last4' ) );
-		}
+        if ( ! empty( $data['ssn'] ) ) {
+            $pdf->SetXY( 140, 106 );
+            $pdf->Write( 0, $get( 'ssn' ) );
+        } elseif ( ! empty( $data['ssn_last4'] ) ) {
+            $pdf->SetXY( 140, 106 );
+            $pdf->Write( 0, '***-**-' . $get( 'ssn_last4' ) );
+        }
 
 		$pdf->SetXY( 160, 246 );
 		$pdf->Write( 0, date( 'm/d/Y' ) );
@@ -149,6 +155,27 @@ final class PDF {
 
 		if ( ! is_dir( $dir ) ) {
 			wp_mkdir_p( $dir );
+		}
+
+		return $dir;
+	}
+
+	private static function get_upload_subdir( string $subdir ): string {
+		$base = self::get_upload_dir();
+		$dir = trailingslashit( $base ) . trim( $subdir, '/' ) . '/';
+
+		if ( ! is_dir( $dir ) ) {
+			wp_mkdir_p( $dir );
+		}
+
+		$index = $dir . 'index.php';
+		if ( ! file_exists( $index ) ) {
+			file_put_contents( $index, "<?php\n// Silence is golden.\n" );
+		}
+
+		$htaccess = $dir . '.htaccess';
+		if ( ! file_exists( $htaccess ) ) {
+			file_put_contents( $htaccess, "Order deny,allow\nDeny from all\n" );
 		}
 
 		return $dir;
