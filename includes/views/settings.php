@@ -11,6 +11,43 @@ $form_id = isset( $settings['forminator_form_id'] )
 <div class="wrap">
 	<h1>LUX Verified – Settings</h1>
 
+	<h2>Health Check</h2>
+	<table class="widefat striped">
+		<tbody>
+			<tr>
+				<th>Version</th>
+				<td><?php echo esc_html( LUXVV_VERSION ); ?></td>
+			</tr>
+			<tr>
+				<th>Tables</th>
+				<td>
+					<?php if ( empty( $health['missing_tables'] ) ) : ?>
+						<span>OK</span>
+					<?php else : ?>
+						<span>Missing: <?php echo esc_html( implode( ', ', $health['missing_tables'] ) ); ?></span>
+					<?php endif; ?>
+				</td>
+			</tr>
+			<tr>
+				<th>Admin Menu</th>
+				<td><?php echo ! empty( $health['menu_attached'] ) ? 'Attached' : 'Missing'; ?></td>
+			</tr>
+			<tr>
+				<th>Bunny Config</th>
+				<td>
+					<?php
+					$bunny_ok = ! empty( $health['bunny_library_id'] ) && ! empty( $health['bunny_api_key'] ) && ! empty( $health['bunny_cdn_host'] );
+					echo $bunny_ok ? 'Configured' : 'Missing';
+					?>
+				</td>
+			</tr>
+			<tr>
+				<th>REST Status</th>
+				<td><?php echo ! empty( $health['rest_url'] ) ? esc_html( $health['rest_url'] ) : 'Unavailable'; ?></td>
+			</tr>
+		</tbody>
+	</table>
+
 	<form method="post" action="options.php">
 		<?php
 		settings_fields( 'luxvv_settings_group' );
@@ -109,8 +146,8 @@ $form_id = isset( $settings['forminator_form_id'] )
 		<p>Define CPM tiers in cents. Example: <code>[{"min_views":0,"cpm_cents":250}]</code></p>
 		<textarea class="large-text code" rows="6" name="luxvv_settings[payout_tiers_json]"><?php echo esc_textarea( \LuxVerified\Settings::get( 'payout_tiers_json' ) ); ?></textarea>
 
-		<h2>Payout Bonus Thresholds</h2>
-		<table class="form-table">
+	<h2>Payout Bonus Thresholds</h2>
+	<table class="form-table">
 			<tr>
 				<th>CTR Bonus Threshold (decimal)</th>
 				<td>
@@ -131,9 +168,23 @@ $form_id = isset( $settings['forminator_form_id'] )
 					<p class="description">Example: 0.75 = 75% retention</p>
 				</td>
 			</tr>
-		</table>
+	</table>
+
+	<h2>1099-NEC Threshold</h2>
+	<table class="form-table">
+		<tr>
+			<th>Annual Threshold (USD)</th>
+			<td>
+				<input type="number"
+					   name="luxvv_settings[payout_1099_threshold]"
+					   value="<?php echo esc_attr( \LuxVerified\Settings::get( 'payout_1099_threshold' ) ); ?>"
+				/>
+				<p class="description">Creators at or above this amount are included in the 1099 export.</p>
+			</td>
+		</tr>
+	</table>
 
 
-		<?php submit_button(); ?>
+	<?php submit_button(); ?>
 	</form>
 </div>
