@@ -35,6 +35,7 @@ final class Settings {
         return [
             'agreement_form_id' => '',
             'w9_form_id' => '',
+            'upload_form_id' => '',
             'bunny_library_id' => '',
             'bunny_api_key' => '',
             'bunny_cdn_host' => '',

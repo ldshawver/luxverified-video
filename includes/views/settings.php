@@ -58,6 +58,16 @@ $form_id = isset( $settings['forminator_form_id'] )
 
 		<table class="form-table">
 			<tr>
+				<th>Upload Form (Presentation)</th>
+				<td>
+					<input type="number"
+						   name="luxvv_settings[upload_form_id]"
+						   value="<?php echo esc_attr( \LuxVerified\Settings::get( 'upload_form_id' ) ); ?>"
+					/>
+					<p class="description">Forminator ID for [luxvv_upload].</p>
+				</td>
+			</tr>
+			<tr>
 				<th>Content Creator Agreement (Step 2)</th>
 				<td>
 					<input type="number"

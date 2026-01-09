@@ -22,6 +22,11 @@ final class PDF_Controller {
 			wp_die( 'Forbidden' );
 		}
 
+		if ( ! class_exists( '\\setasign\\Fpdi\\Tcpdf\\Fpdi' ) ) {
+			update_option( 'luxvv_fpdi_missing', current_time( 'timestamp' ), false );
+			wp_die( 'W-9 PDF library missing. Please run Composer install for FPDI/TCPDF.' );
+		}
+
 		check_admin_referer( 'luxvv_generate_w9' );
 
 		$user_id = isset( $_GET['user_id'] ) ? (int) $_GET['user_id'] : 0;

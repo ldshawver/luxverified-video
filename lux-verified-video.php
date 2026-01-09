@@ -18,6 +18,10 @@ define( 'LUXVV_PATH', plugin_dir_path( __FILE__ ) );
 define( 'LUXVV_DIR', LUXVV_PATH );
 define( 'LUXVV_URL', plugin_dir_url( __FILE__ ) );
 
+if ( file_exists( LUXVV_PATH . 'vendor/autoload.php' ) ) {
+	require_once LUXVV_PATH . 'vendor/autoload.php';
+}
+
 require_once LUXVV_PATH . 'includes/class-install.php';
 require_once LUXVV_PATH . 'includes/class-admin-menu.php';
 require_once LUXVV_PATH . 'includes/class-admin-actions.php';
@@ -43,3 +47,7 @@ require_once LUXVV_PATH . 'includes/class-pdf-controller.php';
 \LuxVerified\Repair::init();
 \LuxVerified\Review::init();
 \LuxVerified\PDF_Controller::init();
+
+if ( defined( 'WP_CLI' ) && WP_CLI ) {
+	\LuxVerified\PDF::register_cli();
+}

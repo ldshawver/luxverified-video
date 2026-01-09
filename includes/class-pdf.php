@@ -80,6 +80,56 @@ final class PDF {
 		return $template;
 	}
 
+	public static function self_test(): array {
+		$results = [
+			'fpdi_available' => class_exists( '\\setasign\\Fpdi\\Tcpdf\\Fpdi' ),
+			'template_readable' => false,
+			'template_path' => '',
+			'upload_dir' => '',
+			'upload_dir_exists' => false,
+			'upload_dir_writable' => false,
+		];
+
+		$template = defined( 'LUXVV_PATH' ) ? LUXVV_PATH . 'assets/w9-template.pdf' : '';
+		if ( $template ) {
+			$resolved = self::resolve_template_path( $template );
+			$results['template_path'] = $resolved;
+			$results['template_readable'] = is_readable( $resolved );
+			if ( ! $results['template_readable'] ) {
+				error_log( sprintf( 'LUXVV W-9 self-test: template not readable at %s', $resolved ) );
+			}
+		}
+
+		$upload_dir = self::get_upload_dir_path();
+		$results['upload_dir'] = $upload_dir;
+		$results['upload_dir_exists'] = is_dir( $upload_dir );
+		$results['upload_dir_writable'] = is_writable( $upload_dir );
+
+		if ( ! $results['upload_dir_exists'] || ! $results['upload_dir_writable'] ) {
+			error_log( sprintf( 'LUXVV W-9 self-test: upload dir not writable %s', $upload_dir ) );
+		}
+
+		return $results;
+	}
+
+	public static function register_cli(): void {
+		if ( ! class_exists( '\\WP_CLI' ) ) {
+			return;
+		}
+
+		\WP_CLI::add_command( 'luxvv w9-self-test', function () {
+			$results = self::self_test();
+			foreach ( $results as $key => $value ) {
+				\WP_CLI::line( sprintf( '%s: %s', $key, is_bool( $value ) ? ( $value ? 'yes' : 'no' ) : (string) $value ) );
+			}
+			if ( $results['fpdi_available'] && $results['template_readable'] && $results['upload_dir_exists'] && $results['upload_dir_writable'] ) {
+				\WP_CLI::success( 'W-9 self-test passed.' );
+				return;
+			}
+			\WP_CLI::warning( 'W-9 self-test failed. Check output above.' );
+		} );
+	}
+
 	/**
 	 * Generate payout receipt PDF
 	 */
@@ -167,10 +217,15 @@ final class PDF {
 	/**
 	 * Base upload directory helper
 	 */
-	private static function get_upload_dir(): string {
+	private static function get_upload_dir_path(): string {
 
 		$upload = wp_upload_dir();
-		$dir = trailingslashit( $upload['basedir'] ) . 'luxvv/';
+		return trailingslashit( $upload['basedir'] ) . 'luxvv/';
+	}
+
+	private static function get_upload_dir(): string {
+
+		$dir = self::get_upload_dir_path();
 
 		if ( ! is_dir( $dir ) ) {
 			wp_mkdir_p( $dir );

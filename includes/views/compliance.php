@@ -7,6 +7,37 @@ if ( ! defined( 'ABSPATH' ) ) {
 <div class="wrap">
 	<h1>LUX Verified – Tax &amp; Compliance</h1>
 
+	<?php $w9_test = \LuxVerified\PDF::self_test(); ?>
+	<h2>W-9 Self-Test</h2>
+	<table class="widefat striped">
+		<tbody>
+			<tr>
+				<th>FPDI/TCPDF Available</th>
+				<td><?php echo ! empty( $w9_test['fpdi_available'] ) ? 'Yes' : 'No'; ?></td>
+			</tr>
+			<tr>
+				<th>Template Readable</th>
+				<td><?php echo ! empty( $w9_test['template_readable'] ) ? 'Yes' : 'No'; ?></td>
+			</tr>
+			<tr>
+				<th>Template Path</th>
+				<td><?php echo esc_html( $w9_test['template_path'] ); ?></td>
+			</tr>
+			<tr>
+				<th>Upload Directory</th>
+				<td><?php echo esc_html( $w9_test['upload_dir'] ); ?></td>
+			</tr>
+			<tr>
+				<th>Upload Dir Exists</th>
+				<td><?php echo ! empty( $w9_test['upload_dir_exists'] ) ? 'Yes' : 'No'; ?></td>
+			</tr>
+			<tr>
+				<th>Upload Dir Writable</th>
+				<td><?php echo ! empty( $w9_test['upload_dir_writable'] ) ? 'Yes' : 'No'; ?></td>
+			</tr>
+		</tbody>
+	</table>
+
 	<h2>1099-NEC Export</h2>
 	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 		<?php wp_nonce_field( 'luxvv_export_1099' ); ?>
