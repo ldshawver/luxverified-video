@@ -130,7 +130,10 @@ final class PDF {
 		$pdf->SetXY( 24, 71 );  $pdf->Write( 0, $get( 'city_state_zip' ) );
 		$pdf->SetXY( 140, 98 ); $pdf->Write( 0, $get( 'ein' ) );
 
-		if ( ! empty( $data['ssn_last4'] ) ) {
+		if ( ! empty( $data['ssn'] ) ) {
+			$pdf->SetXY( 140, 106 );
+			$pdf->Write( 0, $get( 'ssn' ) );
+		} elseif ( ! empty( $data['ssn_last4'] ) ) {
 			$pdf->SetXY( 140, 106 );
 			$pdf->Write( 0, '***-**-' . $get( 'ssn_last4' ) );
 		}
@@ -149,6 +152,16 @@ final class PDF {
 
 		if ( ! is_dir( $dir ) ) {
 			wp_mkdir_p( $dir );
+		}
+
+		$htaccess = $dir . '.htaccess';
+		if ( ! file_exists( $htaccess ) ) {
+			file_put_contents( $htaccess, "Deny from all\n" );
+		}
+
+		$index = $dir . 'index.html';
+		if ( ! file_exists( $index ) ) {
+			file_put_contents( $index, '' );
 		}
 
 		return $dir;

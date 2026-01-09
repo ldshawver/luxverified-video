@@ -5,11 +5,15 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 final class Admin_Menu {
 
-	const SLUG = 'luxvv';
+	const SLUG = 'lux-verified';
+
+	public static function init(): void {
+		add_action( 'admin_menu', [ __CLASS__, 'register' ] );
+	}
 
 	public static function register(): void {
 
-		add_menu_page(
+		$hook = add_menu_page(
 			'LUX Verified',
 			'LUX Verified',
 			'manage_options',
@@ -18,6 +22,16 @@ final class Admin_Menu {
 			'dashicons-shield-alt',
 			58
 		);
+		if ( ! $hook ) {
+			if ( ! function_exists( 'deactivate_plugins' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			}
+			update_option( 'luxvv_menu_attached', 0, false );
+			deactivate_plugins( plugin_basename( LUXVV_PATH . 'lux-verified-video.php' ) );
+			wp_die( 'LUX Verified menu failed to attach. Plugin deactivated.' );
+		}
+
+		update_option( 'luxvv_menu_attached', 1, false );
 
 		add_submenu_page(
 			self::SLUG,
@@ -33,7 +47,7 @@ final class Admin_Menu {
 			'Videos',
 			'Videos',
 			'manage_options',
-			'luxvv-videos',
+			'lux-verified-videos',
 			[ __CLASS__, 'render_videos' ]
 		);
 
@@ -42,17 +56,26 @@ final class Admin_Menu {
 			'Events',
 			'Events',
 			'manage_options',
-			'luxvv-events',
+			'lux-verified-events',
 			[ __CLASS__, 'render_events' ]
 		);
 
 		add_submenu_page(
 			self::SLUG,
-			'Verification Requests',
-			'Requests',
+			'Verification',
+			'Verification',
 			'manage_options',
-			'luxvv-requests',
-			[ __CLASS__, 'render_requests' ]
+			'lux-verified-verification',
+			[ __CLASS__, 'render_verification' ]
+		);
+
+		add_submenu_page(
+			self::SLUG,
+			'Tax & Compliance',
+			'Tax & Compliance',
+			'manage_options',
+			'lux-verified-compliance',
+			[ __CLASS__, 'render_compliance' ]
 		);
 
 		add_submenu_page(
@@ -60,7 +83,7 @@ final class Admin_Menu {
 			'Payouts',
 			'Payouts',
 			'manage_options',
-			'luxvv-payouts',
+			'lux-verified-payouts',
 			[ __CLASS__, 'render_payouts' ]
 		);
 
@@ -69,7 +92,7 @@ final class Admin_Menu {
 			'Settings',
 			'Settings',
 			'manage_options',
-			'luxvv-settings',
+			'lux-verified-settings',
 			[ __CLASS__, 'render_settings' ]
 		);
 
@@ -78,22 +101,15 @@ final class Admin_Menu {
 			'AI Control',
 			'AI Control',
 			'manage_options',
-			'luxvv-ai',
+			'lux-verified-ai',
 			[ __CLASS__, 'render_ai' ]
-		);
-
-		add_submenu_page(
-			self::SLUG,
-			'LUX Marketing',
-			'LUX Marketing',
-			'manage_options',
-			'luxvv-marketing',
-			[ __CLASS__, 'render_marketing' ]
 		);
 	}
 
 	public static function render_dashboard(): void {
-		$summary = class_exists( '\\LuxVerified\\Analytics' )
+		echo '<h1>LUX Verified – Dashboard Loaded</h1>';
+
+		$summary = class_exists( '\\LuxVerified\\Analytics' ) && method_exists( '\\LuxVerified\\Analytics', 'get_dashboard_summary' )
 			? Analytics::get_dashboard_summary( 30 )
 			: [
 				'days' => 30,
@@ -161,8 +177,26 @@ final class Admin_Menu {
 		<?php
 	}
 
-	public static function render_requests(): void {
+	public static function render_verification(): void {
+		echo '<h1>LUX Verified – Dashboard Loaded</h1>';
+		self::render_requests();
+	}
 
+	public static function render_compliance(): void {
+		echo '<h1>LUX Verified – Dashboard Loaded</h1>';
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Unauthorized' );
+		}
+
+		$users = get_users( [
+			'fields' => [ 'ID', 'user_login', 'user_email' ],
+		] );
+		$threshold = Settings::get( 'payout_1099_threshold', 600 );
+
+		require LUXVV_DIR . 'includes/views/compliance.php';
+	}
+
+	public static function render_requests(): void {
 		global $wpdb;
 
 		$table = $wpdb->prefix . 'lux_verified_members';
@@ -192,6 +226,7 @@ final class Admin_Menu {
 	}
 
 	public static function render_videos(): void {
+		echo '<h1>LUX Verified – Dashboard Loaded</h1>';
 		global $wpdb;
 
 		$table = $wpdb->prefix . 'lux_videos';
@@ -224,10 +259,10 @@ final class Admin_Menu {
 					<?php foreach ( $rows as $row ) : ?>
 						<tr>
 							<td>
-								<strong><?php echo esc_html( $row['title'] ?? $row['bunny_video_guid'] ); ?></strong><br>
-								<small><?php echo esc_html( $row['bunny_video_guid'] ?? '' ); ?></small>
+								<strong><?php echo esc_html( $row['title'] ?? $row['bunny_guid'] ); ?></strong><br>
+								<small><?php echo esc_html( $row['bunny_guid'] ?? '' ); ?></small>
 							</td>
-							<td><?php echo (int) ( $row['owner_user_id'] ?? 0 ); ?></td>
+							<td><?php echo (int) ( $row['user_id'] ?? 0 ); ?></td>
 							<td><?php echo esc_html( $row['status'] ?? 'unknown' ); ?></td>
 							<td><?php echo esc_html( $row['created_at'] ?? '' ); ?></td>
 						</tr>
@@ -240,6 +275,7 @@ final class Admin_Menu {
 	}
 
 	public static function render_marketing(): void {
+		echo '<h1>LUX Verified – Dashboard Loaded</h1>';
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( 'Unauthorized' );
 		}
@@ -270,6 +306,7 @@ final class Admin_Menu {
 	}
 
 	public static function render_events(): void {
+		echo '<h1>LUX Verified – Dashboard Loaded</h1>';
 		global $wpdb;
 
 		$table = $wpdb->prefix . 'lux_video_events';
@@ -304,10 +341,9 @@ final class Admin_Menu {
 					<?php foreach ( $rows as $row ) : ?>
 						<tr>
 							<td><?php echo esc_html( $row['event_type'] ?? '' ); ?></td>
-							<td><?php echo esc_html( $row['bunny_video_guid'] ?? '' ); ?></td>
-							<td><?php echo (int) ( $row['owner_user_id'] ?? 0 ); ?></td>
-							<td><?php echo (int) ( $row['viewer_user_id'] ?? 0 ); ?></td>
-							<td><?php echo (int) ( $row['current_time'] ?? 0 ); ?></td>
+							<td><?php echo (int) ( $row['video_id'] ?? 0 ); ?></td>
+							<td><?php echo (int) ( $row['user_id'] ?? 0 ); ?></td>
+							<td><?php echo (int) ( $row['watch_seconds'] ?? 0 ); ?></td>
 							<td><?php echo esc_html( $row['created_at'] ?? '' ); ?></td>
 						</tr>
 					<?php endforeach; ?>
@@ -319,6 +355,7 @@ final class Admin_Menu {
 	}
 
 	public static function render_payouts(): void {
+		echo '<h1>LUX Verified – Dashboard Loaded</h1>';
 		global $wpdb;
 
 		$table = $wpdb->prefix . 'lux_payouts';
@@ -328,7 +365,7 @@ final class Admin_Menu {
 		}
 
 		$rows = $wpdb->get_results(
-			"SELECT * FROM {$table} ORDER BY period_start DESC LIMIT 50",
+			"SELECT * FROM {$table} ORDER BY created_at DESC LIMIT 50",
 			ARRAY_A
 		);
 
@@ -343,57 +380,19 @@ final class Admin_Menu {
 						<tr>
 							<th>User</th>
 							<th>Period</th>
-							<th>Views ≥ 20s</th>
-							<th>CPM</th>
-							<th>Payout</th>
-							<th>Status</th>
-							<th>Paid At</th>
-							<th>Actions</th>
+							<th>Views</th>
+							<th>Revenue</th>
+							<th>Paid</th>
 						</tr>
 					</thead>
 					<tbody>
 					<?php foreach ( $rows as $row ) : ?>
-						<?php
-						$payout_id = (int) ( $row['id'] ?? 0 );
-						$is_paid = ( $row['status'] ?? '' ) === 'paid';
-						$receipt_url = $payout_id
-							? wp_nonce_url(
-								admin_url( 'admin-post.php?action=luxvv_download_receipt&payout_id=' . $payout_id ),
-								'luxvv_download_receipt_' . $payout_id
-							)
-							: '';
-						?>
 						<tr>
 							<td><?php echo (int) ( $row['user_id'] ?? 0 ); ?></td>
-							<td><?php echo esc_html( $row['period_start'] ?? '' ); ?> → <?php echo esc_html( $row['period_end'] ?? '' ); ?></td>
-							<td><?php echo (int) ( $row['views_20s'] ?? 0 ); ?></td>
-							<td><?php echo (int) ( $row['cpm_cents'] ?? 0 ); ?>¢</td>
-							<td><?php echo (int) ( $row['payout_cents'] ?? 0 ); ?>¢</td>
-							<td><?php echo esc_html( $row['status'] ?? 'pending' ); ?></td>
-							<td><?php echo esc_html( $row['paid_at'] ?? '' ); ?></td>
-							<td>
-								<?php if ( ! $is_paid ) : ?>
-									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="luxvv-inline-form">
-										<input type="hidden" name="action" value="luxvv_mark_payout_paid">
-										<input type="hidden" name="payout_id" value="<?php echo esc_attr( $payout_id ); ?>">
-										<?php wp_nonce_field( 'luxvv_mark_payout_paid' ); ?>
-										<input type="text" name="reference" placeholder="Reference">
-										<input type="text" name="notes" placeholder="Notes">
-										<button type="submit">Mark Paid</button>
-									</form>
-								<?php else : ?>
-									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="luxvv-inline-form">
-										<input type="hidden" name="action" value="luxvv_reset_payout">
-										<input type="hidden" name="payout_id" value="<?php echo esc_attr( $payout_id ); ?>">
-										<?php wp_nonce_field( 'luxvv_reset_payout' ); ?>
-										<input type="text" name="reason" placeholder="Reset reason">
-										<button type="submit">Reset</button>
-									</form>
-									<?php if ( $receipt_url ) : ?>
-										<a href="<?php echo esc_url( $receipt_url ); ?>">Receipt</a>
-									<?php endif; ?>
-								<?php endif; ?>
-							</td>
+							<td><?php echo esc_html( $row['period'] ?? '' ); ?></td>
+							<td><?php echo (int) ( $row['views'] ?? 0 ); ?></td>
+							<td><?php echo esc_html( $row['revenue'] ?? '' ); ?></td>
+							<td><?php echo ! empty( $row['is_paid'] ) ? 'Yes' : 'No'; ?></td>
 						</tr>
 					<?php endforeach; ?>
 					</tbody>
@@ -404,14 +403,25 @@ final class Admin_Menu {
 	}
 
 	public static function render_settings(): void {
+		echo '<h1>LUX Verified – Dashboard Loaded</h1>';
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( 'Unauthorized' );
 		}
+
+		$health = [
+			'missing_tables' => class_exists( '\\LuxVerified\\Install' ) ? Install::missing_tables() : [],
+			'menu_attached' => (int) get_option( 'luxvv_menu_attached', 0 ) === 1,
+			'bunny_library_id' => Settings::get( 'bunny_library_id' ),
+			'bunny_api_key' => Settings::get( 'bunny_api_key' ),
+			'bunny_cdn_host' => Settings::get( 'bunny_cdn_host' ),
+			'rest_url' => function_exists( 'rest_url' ) ? rest_url( 'luxvv/v1' ) : '',
+		];
 
 		require LUXVV_DIR . 'includes/views/settings.php';
 	}
 
 	public static function render_ai(): void {
+		echo '<h1>LUX Verified – Dashboard Loaded</h1>';
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( 'Unauthorized' );
 		}

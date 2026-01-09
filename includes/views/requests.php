@@ -65,8 +65,7 @@ if ( empty( $requests ) ) {
 				$w9_url  = $w9_file
 					? wp_nonce_url(
 						admin_url( 'admin-post.php?action=luxvv_download_w9&user_id=' . $user_id ),
-						Verification::NONCE_ACTION,
-						'_wpnonce'
+						'luxvv_download_w9'
 					)
 					: '';
 			?>
