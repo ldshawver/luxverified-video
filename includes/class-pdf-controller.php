@@ -14,6 +14,10 @@ final class PDF_Controller {
 			'admin_post_luxvv_download_w9',
 			[ __CLASS__, 'download' ]
 		);
+		add_action(
+			'admin_post_luxvv_w9_self_test',
+			[ __CLASS__, 'run_self_test' ]
+		);
 	}
 
 	public static function generate(): void {
@@ -22,17 +26,37 @@ final class PDF_Controller {
 			wp_die( 'Forbidden' );
 		}
 
+		$user_id = isset( $_GET['user_id'] ) ? (int) $_GET['user_id'] : 0;
+		error_log( wp_json_encode( [
+			'component' => 'w9_pdf',
+			'step' => 'start',
+			'status' => 'ok',
+			'user_id' => $user_id,
+		] ) );
+
 		if ( ! class_exists( '\\setasign\\Fpdi\\Tcpdf\\Fpdi' ) ) {
 			update_option( 'luxvv_fpdi_missing', current_time( 'timestamp' ), false );
+			error_log( wp_json_encode( [
+				'component' => 'w9_pdf',
+				'step' => 'fpdi_check',
+				'status' => 'missing',
+				'user_id' => $user_id,
+			] ) );
 			wp_die( 'W-9 PDF library missing. Please run Composer install for FPDI/TCPDF.' );
 		}
 
 		check_admin_referer( 'luxvv_generate_w9' );
 
-		$user_id = isset( $_GET['user_id'] ) ? (int) $_GET['user_id'] : 0;
 		if ( $user_id <= 0 ) {
 			wp_die( 'Invalid user' );
 		}
+
+		error_log( wp_json_encode( [
+			'component' => 'w9_pdf',
+			'step' => 'fpdi_check',
+			'status' => 'ok',
+			'user_id' => $user_id,
+		] ) );
 
 		$data = [
 			'name' => trim(
@@ -73,8 +97,20 @@ final class PDF_Controller {
 		$data['city_state_zip'] = $city_state_zip;
 		$file = PDF::generate_w9_pdf( $data, $template );
 		if ( ! $file ) {
+			error_log( wp_json_encode( [
+				'component' => 'w9_pdf',
+				'step' => 'generate',
+				'status' => 'failed',
+				'user_id' => $user_id,
+			] ) );
 			wp_die( 'Unable to generate W-9 PDF.' );
 		}
+		error_log( wp_json_encode( [
+			'component' => 'w9_pdf',
+			'step' => 'generate',
+			'status' => 'ok',
+			'user_id' => $user_id,
+		] ) );
 		update_user_meta( $user_id, 'luxvv_w9_pdf', $file );
 
 		nocache_headers();
@@ -105,6 +141,20 @@ final class PDF_Controller {
 		header( 'Content-Type: application/pdf' );
 		header( 'Content-Disposition: attachment; filename="W9-' . $user_id . '.pdf"' );
 		readfile( $file );
+		exit;
+	}
+
+	public static function run_self_test(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Forbidden' );
+		}
+
+		check_admin_referer( 'luxvv_w9_self_test' );
+
+		$results = PDF::self_test();
+		set_transient( 'luxvv_w9_self_test', $results, 5 * MINUTE_IN_SECONDS );
+
+		wp_safe_redirect( admin_url( 'admin.php?page=lux-verified-compliance&w9_test=1' ) );
 		exit;
 	}
 }

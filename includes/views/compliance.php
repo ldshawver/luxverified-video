@@ -7,8 +7,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 <div class="wrap">
 	<h1>LUX Verified – Tax &amp; Compliance</h1>
 
-	<?php $w9_test = \LuxVerified\PDF::self_test(); ?>
+	<?php
+	$w9_test = get_transient( 'luxvv_w9_self_test' );
+	if ( ! is_array( $w9_test ) ) {
+		$w9_test = \LuxVerified\PDF::self_test();
+	}
+	?>
 	<h2>W-9 Self-Test</h2>
+	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+		<?php wp_nonce_field( 'luxvv_w9_self_test' ); ?>
+		<input type="hidden" name="action" value="luxvv_w9_self_test">
+		<?php submit_button( 'Run W-9 PDF Test', 'secondary', 'submit', false ); ?>
+	</form>
 	<table class="widefat striped">
 		<tbody>
 			<tr>
