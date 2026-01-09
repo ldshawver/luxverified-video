@@ -5,6 +5,23 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class Repair {
 
+	public static function init(): void {
+		add_action( 'admin_post_luxvv_rebuild_tables', [ __CLASS__, 'rebuild_tables' ] );
+	}
+
+	public static function rebuild_tables(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Forbidden' );
+		}
+
+		check_admin_referer( 'luxvv_rebuild_tables' );
+
+		Install::activate();
+
+		wp_safe_redirect( admin_url( 'admin.php?page=lux-verified-settings&tables=rebuilt' ) );
+		exit;
+	}
+
 	public static function run_repair(): array {
 		global $wpdb;
 
@@ -33,6 +50,7 @@ final class Repair {
 			}
 
 			$status = Verification::derive_status_from_meta( $user_id );
+			self::repair_w9_meta( $user_id );
 
 			$exists = (int) $wpdb->get_var(
 				$wpdb->prepare(
@@ -66,5 +84,18 @@ final class Repair {
 			'success' => true,
 			'users_processed' => $updated,
 		];
+	}
+
+	private static function repair_w9_meta( int $user_id ): void {
+		$has_tax_id = (bool) get_user_meta( $user_id, Verification::TAX_ID_ENCRYPTED_META, true );
+		$has_status = (bool) get_user_meta( $user_id, Verification::W9_STATUS_META, true );
+
+		if ( $has_tax_id && ! $has_status ) {
+			update_user_meta( $user_id, Verification::W9_STATUS_META, 'complete' );
+		}
+
+		if ( $has_tax_id && ! get_user_meta( $user_id, Verification::W9_SUBMITTED_META, true ) ) {
+			update_user_meta( $user_id, Verification::W9_SUBMITTED_META, current_time( 'timestamp' ) );
+		}
 	}
 }

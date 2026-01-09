@@ -40,6 +40,13 @@ final class Admin {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
+		if ( get_option( 'luxvv_fpdi_missing' ) ) {
+			?>
+			<div class="notice notice-error">
+				<p><?php echo esc_html__( 'LUX Verified Video: FPDI/TCPDF library missing. Run Composer install to enable W-9 PDF generation.', 'lux-verified-video' ); ?></p>
+			</div>
+			<?php
+		}
 		?>
 		<div class="notice notice-info">
 			<p><?php echo esc_html__( 'LUX Verified Video — Deploy Confirmed', 'lux-verified-video' ); ?></p>

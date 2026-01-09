@@ -70,6 +70,8 @@ elseif ( $status === 'step1_completed' ) {
 				)
 			);
 
+			self::repair_w9_meta( $user_id );
+
 			$data = [
 				'user_id'             => $user_id,
 				'verification_status' => $status,
@@ -93,8 +95,21 @@ elseif ( $status === 'step1_completed' ) {
 		] );
 
 		wp_safe_redirect(
-			admin_url( 'admin.php?page=luxvv-requests&repair=1&count=' . $updated )
+			admin_url( 'admin.php?page=lux-verified-verification&repair=1&count=' . $updated )
 		);
 		exit;
+	}
+
+	private static function repair_w9_meta( int $user_id ): void {
+		$has_tax_id = (bool) get_user_meta( $user_id, Verification::TAX_ID_ENCRYPTED_META, true );
+		$has_status = (bool) get_user_meta( $user_id, Verification::W9_STATUS_META, true );
+
+		if ( $has_tax_id && ! $has_status ) {
+			update_user_meta( $user_id, Verification::W9_STATUS_META, 'complete' );
+		}
+
+		if ( $has_tax_id && ! get_user_meta( $user_id, Verification::W9_SUBMITTED_META, true ) ) {
+			update_user_meta( $user_id, Verification::W9_SUBMITTED_META, current_time( 'timestamp' ) );
+		}
 	}
 }

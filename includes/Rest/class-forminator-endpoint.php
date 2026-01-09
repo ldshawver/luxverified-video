@@ -23,10 +23,7 @@ class Forminator_Endpoint extends WP_REST_Controller {
             return new \WP_Error('no_user', 'User ID missing', ['status' => 400]);
         }
 
-        update_user_meta($user_id, 'luxvv_step2', 'completed');
-
-        // Check auto verify
-        (new \LuxVerified\Verification())->maybe_auto_verify($user_id);
+        update_user_meta( $user_id, \LuxVerified\Verification::STEP2, 1 );
 
         return [
             'success' => true,

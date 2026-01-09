@@ -34,7 +34,7 @@ final class Admin_Actions {
 
 		Verification::approve( $user_id );
 
-		wp_safe_redirect( admin_url( 'admin.php?page=luxvv-requests&approved=1' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=lux-verified-verification&approved=1' ) );
 		exit;
 	}
 
@@ -58,7 +58,7 @@ final class Admin_Actions {
 
 		Verification::reject( $user_id, $notes );
 
-		wp_safe_redirect( admin_url( 'admin.php?page=luxvv-requests&rejected=1' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=lux-verified-verification&rejected=1' ) );
 		exit;
 	}
 	/* =========================
@@ -149,7 +149,7 @@ public static function preview_email(): void {
 		}
 
 		wp_safe_redirect(
-			admin_url( 'admin.php?page=luxvv-requests&repaired=1' )
+			admin_url( 'admin.php?page=lux-verified-verification&repaired=1' )
 		);
 		exit;
 	}

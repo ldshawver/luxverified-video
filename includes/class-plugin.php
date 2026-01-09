@@ -9,6 +9,10 @@ class Plugin {
 
     private static $instance = null;
 
+    public static function init() : void {
+        self::instance();
+    }
+
     public static function instance() : self {
         if ( null === self::$instance ) {
             self::$instance = new self();
@@ -34,15 +38,10 @@ class Plugin {
     }
 
     private function init_hooks() {
-        register_activation_hook( LUXVV_PATH . 'lux-verified-video.php', [ '\\LuxVerified\\Install', 'activate' ] );
-
         add_action( 'init', [ $this, 'load_textdomain' ] );
         add_action( 'admin_enqueue_scripts', [ $this, 'admin_assets' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'frontend_assets' ] );
 
-        // init modules
-        Settings::instance();
-        Verification::instance();
         Bunny::instance();
         Videos::instance();
         Analytics::instance();
@@ -56,6 +55,7 @@ class Plugin {
 
     public function admin_assets() {
         wp_enqueue_style( 'luxvv-admin', LUXVV_URL . 'assets/css/lux-verified.css', [], LUXVV_VERSION );
+        wp_enqueue_style( 'luxvv-admin-core', LUXVV_URL . 'assets/admin.css', [], LUXVV_VERSION );
         wp_enqueue_script( 'luxvv-admin', LUXVV_URL . 'assets/js/lux-verified.js', [ 'jquery' ], LUXVV_VERSION, true );
         wp_localize_script( 'luxvv-admin', 'luxVerified', [
             'ajaxurl' => admin_url( 'admin-ajax.php' ),
@@ -64,6 +64,7 @@ class Plugin {
     }
 
     public function frontend_assets() {
-        wp_enqueue_style( 'luxvv-frontend', LUXVV_URL . 'assets/css/lux-verified.css', [], LUXVV_VERSION );
+        wp_enqueue_style( 'luxvv-frontend', LUXVV_URL . 'assets/frontend.css', [], LUXVV_VERSION );
+        wp_enqueue_style( 'luxvv-frontend-shared', LUXVV_URL . 'assets/css/lux-verified.css', [], LUXVV_VERSION );
     }
 }
