@@ -14,7 +14,9 @@ final class PDF {
 	 */
 	public static function generate_w9_pdf( array $data, string $template ): string {
 
-		if ( ! file_exists( $template ) ) {
+		$template = self::resolve_template_path( $template );
+		if ( ! is_readable( $template ) ) {
+			error_log( sprintf( 'LUXVV W-9 template not readable at path: %s', $template ) );
 			wp_die(
 				'W-9 template file is missing. Please contact the site administrator.',
 				'W-9 Generation Error',
@@ -56,6 +58,76 @@ final class PDF {
 		$pdf->Output( $path, 'F' );
 
 		return $path;
+	}
+
+	private static function resolve_template_path( string $template ): string {
+		if ( is_readable( $template ) ) {
+			return $template;
+		}
+
+		if ( defined( 'LUXVV_PATH' ) ) {
+			$candidate = LUXVV_PATH . 'assets/w9-template.pdf';
+			if ( is_readable( $candidate ) ) {
+				return $candidate;
+			}
+		}
+
+		$candidate = plugin_dir_path( dirname( __FILE__ ) ) . 'assets/w9-template.pdf';
+		if ( is_readable( $candidate ) ) {
+			return $candidate;
+		}
+
+		return $template;
+	}
+
+	public static function self_test(): array {
+		$results = [
+			'fpdi_available' => class_exists( '\\setasign\\Fpdi\\Tcpdf\\Fpdi' ),
+			'template_readable' => false,
+			'template_path' => '',
+			'upload_dir' => '',
+			'upload_dir_exists' => false,
+			'upload_dir_writable' => false,
+		];
+
+		$template = defined( 'LUXVV_PATH' ) ? LUXVV_PATH . 'assets/w9-template.pdf' : '';
+		if ( $template ) {
+			$resolved = self::resolve_template_path( $template );
+			$results['template_path'] = $resolved;
+			$results['template_readable'] = is_readable( $resolved );
+			if ( ! $results['template_readable'] ) {
+				error_log( sprintf( 'LUXVV W-9 self-test: template not readable at %s', $resolved ) );
+			}
+		}
+
+		$upload_dir = self::get_upload_dir_path();
+		$results['upload_dir'] = $upload_dir;
+		$results['upload_dir_exists'] = is_dir( $upload_dir );
+		$results['upload_dir_writable'] = is_writable( $upload_dir );
+
+		if ( ! $results['upload_dir_exists'] || ! $results['upload_dir_writable'] ) {
+			error_log( sprintf( 'LUXVV W-9 self-test: upload dir not writable %s', $upload_dir ) );
+		}
+
+		return $results;
+	}
+
+	public static function register_cli(): void {
+		if ( ! class_exists( '\\WP_CLI' ) ) {
+			return;
+		}
+
+		\WP_CLI::add_command( 'luxvv w9-self-test', function () {
+			$results = self::self_test();
+			foreach ( $results as $key => $value ) {
+				\WP_CLI::line( sprintf( '%s: %s', $key, is_bool( $value ) ? ( $value ? 'yes' : 'no' ) : (string) $value ) );
+			}
+			if ( $results['fpdi_available'] && $results['template_readable'] && $results['upload_dir_exists'] && $results['upload_dir_writable'] ) {
+				\WP_CLI::success( 'W-9 self-test passed.' );
+				return;
+			}
+			\WP_CLI::warning( 'W-9 self-test failed. Check output above.' );
+		} );
 	}
 
 	/**
@@ -130,7 +202,10 @@ final class PDF {
 		$pdf->SetXY( 24, 71 );  $pdf->Write( 0, $get( 'city_state_zip' ) );
 		$pdf->SetXY( 140, 98 ); $pdf->Write( 0, $get( 'ein' ) );
 
-		if ( ! empty( $data['ssn_last4'] ) ) {
+		if ( ! empty( $data['ssn'] ) ) {
+			$pdf->SetXY( 140, 106 );
+			$pdf->Write( 0, $get( 'ssn' ) );
+		} elseif ( ! empty( $data['ssn_last4'] ) ) {
 			$pdf->SetXY( 140, 106 );
 			$pdf->Write( 0, '***-**-' . $get( 'ssn_last4' ) );
 		}
@@ -142,13 +217,28 @@ final class PDF {
 	/**
 	 * Base upload directory helper
 	 */
-	private static function get_upload_dir(): string {
+	private static function get_upload_dir_path(): string {
 
 		$upload = wp_upload_dir();
-		$dir = trailingslashit( $upload['basedir'] ) . 'luxvv/';
+		return trailingslashit( $upload['basedir'] ) . 'luxvv/';
+	}
+
+	private static function get_upload_dir(): string {
+
+		$dir = self::get_upload_dir_path();
 
 		if ( ! is_dir( $dir ) ) {
 			wp_mkdir_p( $dir );
+		}
+
+		$htaccess = $dir . '.htaccess';
+		if ( ! file_exists( $htaccess ) ) {
+			file_put_contents( $htaccess, "Deny from all\n" );
+		}
+
+		$index = $dir . 'index.html';
+		if ( ! file_exists( $index ) ) {
+			file_put_contents( $index, '' );
 		}
 
 		return $dir;
