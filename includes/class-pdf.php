@@ -14,7 +14,9 @@ final class PDF {
 	 */
 	public static function generate_w9_pdf( array $data, string $template ): string {
 
-		if ( ! file_exists( $template ) ) {
+		$template = self::resolve_template_path( $template );
+		if ( ! is_readable( $template ) ) {
+			error_log( sprintf( 'LUXVV W-9 template not readable at path: %s', $template ) );
 			wp_die(
 				'W-9 template file is missing. Please contact the site administrator.',
 				'W-9 Generation Error',
@@ -56,6 +58,26 @@ final class PDF {
 		$pdf->Output( $path, 'F' );
 
 		return $path;
+	}
+
+	private static function resolve_template_path( string $template ): string {
+		if ( is_readable( $template ) ) {
+			return $template;
+		}
+
+		if ( defined( 'LUXVV_PATH' ) ) {
+			$candidate = LUXVV_PATH . 'assets/w9-template.pdf';
+			if ( is_readable( $candidate ) ) {
+				return $candidate;
+			}
+		}
+
+		$candidate = plugin_dir_path( dirname( __FILE__ ) ) . 'assets/w9-template.pdf';
+		if ( is_readable( $candidate ) ) {
+			return $candidate;
+		}
+
+		return $template;
 	}
 
 	/**
