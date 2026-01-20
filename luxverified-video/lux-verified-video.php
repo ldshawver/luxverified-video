@@ -116,6 +116,10 @@ add_action( 'init', function () {
 		\LuxVerified\Review::init();
 	}
 
+	if ( class_exists( 'LuxVerified\\Admin_Menu' ) ) {
+		\LuxVerified\Admin_Menu::init();
+	}
+
 	if ( class_exists( 'LuxVerified\\Ajax' ) ) {
 		\LuxVerified\Ajax::init();
 	}
@@ -145,15 +149,6 @@ add_action( 'init', function () {
 	}
 
 }, 1 );
-
-/* ============================================================
- * ADMIN MENU (ONLY ONCE)
- * ============================================================ */
-add_action( 'admin_menu', function () {
-	if ( class_exists( 'LuxVerified\\Admin_Menu' ) ) {
-		\LuxVerified\Admin_Menu::register();
-	}
-}, 9 );
 
 /* ============================================================
  * ADMIN POST HANDLERS

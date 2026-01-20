@@ -7,6 +7,11 @@ final class Admin_Menu {
 
 	const SLUG = 'luxvv';
 
+	public static function init(): void {
+		add_action( 'admin_menu', [ __CLASS__, 'register' ], 9 );
+		add_action( 'admin_menu', [ __CLASS__, 'ensure_menu' ], 999 );
+	}
+
 	public static function register(): void {
 
 		add_menu_page(
@@ -90,6 +95,22 @@ final class Admin_Menu {
 			'luxvv-marketing',
 			[ __CLASS__, 'render_marketing' ]
 		);
+	}
+
+	private static function ensure_menu(): void {
+		global $menu;
+
+		if ( empty( $menu ) || ! is_array( $menu ) ) {
+			return;
+		}
+
+		foreach ( $menu as $item ) {
+			if ( isset( $item[2] ) && $item[2] === self::SLUG ) {
+				return;
+			}
+		}
+
+		self::register();
 	}
 
 	public static function render_dashboard(): void {
